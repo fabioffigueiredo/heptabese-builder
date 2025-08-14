@@ -19,9 +19,15 @@ import {
 
 interface SidebarProps {
   isCollapsed?: boolean;
+  onViewModeChange?: (mode: 'whiteboard' | 'database') => void;
+  currentView?: 'whiteboard' | 'database';
 }
 
-export default function Sidebar({ isCollapsed = false }: SidebarProps) {
+export default function Sidebar({ 
+  isCollapsed = false, 
+  onViewModeChange,
+  currentView = 'whiteboard' 
+}: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSections, setExpandedSections] = useState({
     projects: true,
