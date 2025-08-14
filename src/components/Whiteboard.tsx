@@ -302,11 +302,22 @@ export default function Whiteboard() {
       {/* Whiteboard Canvas */}
       <div
         ref={whiteboardRef}
-        className={`w-full h-full relative ${tool === "pan" ? "cursor-grab" : tool === "connect" ? "cursor-crosshair" : "cursor-default"} ${isPanning ? "cursor-grabbing" : ""}`}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        className={`w-full h-full relative ${
+          tool === 'pan' ? 'cursor-grab' : 
+          tool === 'draw' || tool === 'highlighter' ? 'cursor-crosshair' :
+          tool === 'text' ? 'cursor-text' :
+          tool === 'connect' ? 'cursor-cell' :
+          'cursor-default'
+        } ${isPanning ? "cursor-grabbing" : ""}`}
+        onMouseDown={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseDown : undefined}
+        onMouseMove={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseMove : undefined}
+        onMouseUp={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseUp : undefined}
+        onMouseLeave={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseUp : undefined}
+        style={{
+          transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+          transformOrigin: '0 0',
+          pointerEvents: tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text' ? 'none' : 'auto',
+        }}
       >
         {/* Grid Background */}
         <div 

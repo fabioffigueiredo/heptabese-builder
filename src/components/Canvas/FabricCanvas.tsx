@@ -42,15 +42,9 @@ export default function FabricCanvasComponent({
       selection: tool === "select",
     });
 
-    // Initialize the freeDrawingBrush after canvas creation
-    // Check if freeDrawingBrush exists before setting properties
-    if (canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = brushColor;
-      canvas.freeDrawingBrush.width = brushSize;
-    } else {
-      // If freeDrawingBrush doesn't exist, we'll set it when drawing mode is enabled
-      console.log("FreeDrawingBrush not available yet, will initialize when needed");
-    }
+    // Initialize the freeDrawingBrush for Fabric.js v6
+    canvas.freeDrawingBrush.color = brushColor;
+    canvas.freeDrawingBrush.width = brushSize;
 
     setFabricCanvas(canvas);
 
@@ -86,20 +80,14 @@ export default function FabricCanvasComponent({
       
       case 'draw':
         fabricCanvas.isDrawingMode = true;
-        // Ensure freeDrawingBrush is available when enabling drawing mode
-        if (fabricCanvas.freeDrawingBrush) {
-          fabricCanvas.freeDrawingBrush.color = brushColor;
-          fabricCanvas.freeDrawingBrush.width = brushSize;
-        }
+        fabricCanvas.freeDrawingBrush.color = brushColor;
+        fabricCanvas.freeDrawingBrush.width = brushSize;
         break;
       
       case 'highlighter':
         fabricCanvas.isDrawingMode = true;
-        // Ensure freeDrawingBrush is available when enabling drawing mode
-        if (fabricCanvas.freeDrawingBrush) {
-          fabricCanvas.freeDrawingBrush.color = brushColor;
-          fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
-        }
+        fabricCanvas.freeDrawingBrush.color = brushColor;
+        fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
         break;
       
       case 'text':
@@ -119,19 +107,7 @@ export default function FabricCanvasComponent({
     }
   }, [tool, fabricCanvas, brushSize, brushColor]);
 
-  // Handle zoom and pan
-  useEffect(() => {
-    if (!fabricCanvas) return;
-
-    const viewportTransform = fabricCanvas.viewportTransform;
-    if (viewportTransform) {
-      viewportTransform[0] = zoom;
-      viewportTransform[3] = zoom;
-      viewportTransform[4] = pan.x * zoom;
-      viewportTransform[5] = pan.y * zoom;
-      fabricCanvas.setViewportTransform(viewportTransform);
-    }
-  }, [fabricCanvas, zoom, pan]);
+  // Handle zoom and pan - removed to prevent double transform
 
   // Handle mouse events for custom tools
   const handleMouseDown = useCallback((e: any) => {
@@ -275,9 +251,11 @@ export default function FabricCanvasComponent({
     };
   }, [fabricCanvas, handleMouseDown, onElementAdd, brushSize, brushColor, tool]);
 
+  const isDrawingTool = tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text';
+  
   return (
     <div 
-      className="absolute inset-0 z-10"
+      className={`absolute inset-0 ${isDrawingTool ? 'z-30' : 'z-10'}`}
       style={{
         pointerEvents: tool === 'pan' ? 'none' : 'auto',
       }}
