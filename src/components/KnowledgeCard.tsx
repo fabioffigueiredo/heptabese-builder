@@ -30,40 +30,39 @@ interface Size {
 }
 
 interface KnowledgeCardProps {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  color: string;
-  position: Position;
-  size?: Size;
-  onPositionChange: (id: string, position: Position) => void;
-  onSizeChange?: (id: string, size: Size) => void;
-  onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: any) => void;
-  onStartConnection: (cardId: string, position: Position) => void;
-  onEndConnection: (cardId: string, position: Position) => void;
+  data: {
+    id: string;
+    title: string;
+    content: string;
+    tags: string[];
+    color: string;
+    position: Position;
+    size?: Size;
+  };
+  onPositionChange: (position: Position) => void;
+  onSizeChange?: (size: Size) => void;
+  onDelete: () => void;
+  onUpdate: (updates: Partial<any>) => void;
+  onConnectionStart: () => void;
+  onConnectionEnd: () => void;
+  isConnecting: boolean;
+  zoom: number;
   disabled?: boolean;
-  scale?: number;
 }
 
 export default function KnowledgeCard({
-  id,
-  title,
-  content,
-  tags,
-  color,
-  position,
-  size = { width: 320, height: 240 },
+  data,
   onPositionChange,
   onSizeChange,
   onDelete,
   onUpdate,
-  onStartConnection,
-  onEndConnection,
+  onConnectionStart,
+  onConnectionEnd,
+  isConnecting,
+  zoom,
   disabled = false,
-  scale = 1,
 }: KnowledgeCardProps) {
+  const { id, title, content, tags, color, position, size = { width: 320, height: 240 } } = data;
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -102,7 +101,7 @@ export default function KnowledgeCard({
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y,
       };
-      onPositionChange(id, newPosition);
+      onPositionChange(newPosition);
     } else if (isResizing && onSizeChange) {
       e.preventDefault();
       const deltaX = e.clientX - resizeStart.x;
@@ -152,9 +151,9 @@ export default function KnowledgeCard({
       newSize.width = Math.min(800, newSize.width);
       newSize.height = Math.min(600, newSize.height);
       
-      onSizeChange(id, newSize);
+      onSizeChange?.(newSize);
       if (newPosition.x !== position.x || newPosition.y !== position.y) {
-        onPositionChange(id, newPosition);
+        onPositionChange(newPosition);
       }
     }
   }, [isDragging, isResizing, dragOffset, resizeStart, resizeType, id, onPositionChange, onSizeChange, disabled, size, position]);
@@ -178,8 +177,8 @@ export default function KnowledgeCard({
     }
   }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
-  const handleSave = (data: { title: string; content: string; tags: string[] }) => {
-    onUpdate(id, data);
+  const handleSave = (saveData: { title: string; content: string; tags: string[] }) => {
+    onUpdate(saveData);
     setIsEditing(false);
   };
 
@@ -213,7 +212,7 @@ export default function KnowledgeCard({
       const connectionX = position.x + size.width; // right edge using actual card width
       const connectionY = position.y + size.height / 2; // middle of card height
       console.log(`Start connection from card ${id} at position:`, { x: connectionX, y: connectionY });
-      onStartConnection(id, { x: connectionX, y: connectionY });
+      onConnectionStart();
     }
   };
 
@@ -225,7 +224,7 @@ export default function KnowledgeCard({
       const connectionX = position.x; // left edge of card
       const connectionY = position.y + size.height / 2; // middle of card height
       console.log(`End connection to card ${id} at position:`, { x: connectionX, y: connectionY });
-      onEndConnection(id, { x: connectionX, y: connectionY });
+      onConnectionEnd();
     }
   };
 
@@ -250,7 +249,7 @@ export default function KnowledgeCard({
         top: position.y,
         width: size.width,
         height: size.height,
-        transform: `scale(${scale})`,
+        transform: `scale(${zoom})`,
         transformOrigin: "0 0",
       }}
       onMouseDown={handleMouseDown}
@@ -278,7 +277,7 @@ export default function KnowledgeCard({
                   <Plus className="h-4 w-4 mr-2" />
                   Start Connection
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDelete(id)} className="text-destructive">
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>

@@ -7,12 +7,12 @@ import { toast } from "sonner";
 
 interface MediaElementProps {
   element: DrawingElement;
-  onUpdate: (id: string, updates: Partial<DrawingElement>) => void;
-  onDelete: (id: string) => void;
-  scale: number;
+  onUpdate: (updates: Partial<DrawingElement>) => void;
+  onDelete: () => void;
+  zoom: number;
 }
 
-export default function MediaElement({ element, onUpdate, onDelete, scale }: MediaElementProps) {
+export default function MediaElement({ element, onUpdate, onDelete, zoom }: MediaElementProps) {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -21,8 +21,8 @@ export default function MediaElement({ element, onUpdate, onDelete, scale }: Med
     e.preventDefault();
     setIsDragging(true);
     setDragOffset({
-      x: e.clientX - element.position.x * scale,
-      y: e.clientY - element.position.y * scale,
+      x: e.clientX - element.position.x * zoom,
+      y: e.clientY - element.position.y * zoom,
     });
   };
 
@@ -30,11 +30,11 @@ export default function MediaElement({ element, onUpdate, onDelete, scale }: Med
     if (!isDragging) return;
     
     const newPosition = {
-      x: (e.clientX - dragOffset.x) / scale,
-      y: (e.clientY - dragOffset.y) / scale,
+      x: (e.clientX - dragOffset.x) / zoom,
+      y: (e.clientY - dragOffset.y) / zoom,
     };
     
-    onUpdate(element.id, { position: newPosition });
+    onUpdate({ position: newPosition });
   };
 
   const handleMouseUp = () => {
@@ -139,7 +139,7 @@ export default function MediaElement({ element, onUpdate, onDelete, scale }: Med
         top: element.position.y,
         width: element.size?.width || 200,
         height: element.size?.height || 150,
-        transform: `scale(${scale})`,
+        transform: `scale(${zoom})`,
         transformOrigin: '0 0',
       }}
       onMouseDown={handleMouseDown}
@@ -156,7 +156,7 @@ export default function MediaElement({ element, onUpdate, onDelete, scale }: Med
         className="absolute -top-2 -right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
         onClick={(e) => {
           e.stopPropagation();
-          onDelete(element.id);
+          onDelete();
           toast.success("Media element deleted");
         }}
       >
