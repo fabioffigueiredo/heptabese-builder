@@ -62,7 +62,7 @@ export default function KnowledgeCard({
   zoom,
   disabled = false,
 }: KnowledgeCardProps) {
-  const { id, title, content, tags, color, position, size = { width: 320, height: 240 } } = data;
+  const { id, title, content, tags, color, position = { x: 0, y: 0 }, size = { width: 320, height: 240 } } = data;
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -87,8 +87,8 @@ export default function KnowledgeCard({
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       setDragOffset({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
+        x: e.clientX - (position?.x || 0),
+        y: e.clientY - (position?.y || 0),
       });
       setIsDragging(true);
     }
@@ -107,8 +107,8 @@ export default function KnowledgeCard({
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
       
-      let newSize = { width: size.width, height: size.height };
-      let newPosition = { x: position.x, y: position.y };
+      let newSize = { width: size?.width || 320, height: size?.height || 240 };
+      let newPosition = { x: position?.x || 0, y: position?.y || 0 };
       
       switch (resizeType) {
         case 'nw': // northwest
@@ -152,7 +152,7 @@ export default function KnowledgeCard({
       newSize.height = Math.min(600, newSize.height);
       
       onSizeChange?.(newSize);
-      if (newPosition.x !== position.x || newPosition.y !== position.y) {
+      if (newPosition.x !== (position?.x || 0) || newPosition.y !== (position?.y || 0)) {
         onPositionChange(newPosition);
       }
     }
@@ -197,10 +197,10 @@ export default function KnowledgeCard({
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
-      width: size.width,
-      height: size.height,
-      posX: position.x,
-      posY: position.y,
+      width: size?.width || 320,
+      height: size?.height || 240,
+      posX: position?.x || 0,
+      posY: position?.y || 0,
     });
   }, [disabled, isEditing, size, position]);
 
@@ -209,8 +209,8 @@ export default function KnowledgeCard({
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       // Calculate the exact position of the right connection point
-      const connectionX = position.x + size.width; // right edge using actual card width
-      const connectionY = position.y + size.height / 2; // middle of card height
+      const connectionX = (position?.x || 0) + (size?.width || 320); // right edge using actual card width
+      const connectionY = (position?.y || 0) + (size?.height || 240) / 2; // middle of card height
       console.log(`Start connection from card ${id} at position:`, { x: connectionX, y: connectionY });
       onConnectionStart();
     }
@@ -221,8 +221,8 @@ export default function KnowledgeCard({
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       // Calculate the exact position of the left connection point
-      const connectionX = position.x; // left edge of card
-      const connectionY = position.y + size.height / 2; // middle of card height
+      const connectionX = position?.x || 0; // left edge of card
+      const connectionY = (position?.y || 0) + (size?.height || 240) / 2; // middle of card height
       console.log(`End connection to card ${id} at position:`, { x: connectionX, y: connectionY });
       onConnectionEnd();
     }
@@ -245,10 +245,10 @@ export default function KnowledgeCard({
         ${disabled ? "opacity-50" : ""}
       `}
       style={{
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: size.height,
+        left: position?.x || 0,
+        top: position?.y || 0,
+        width: size?.width || 320,
+        height: size?.height || 240,
         transform: `scale(${zoom})`,
         transformOrigin: "0 0",
       }}
@@ -300,7 +300,7 @@ export default function KnowledgeCard({
         ) : (
           <>
             <p className="text-sm text-card-foreground/80 leading-relaxed overflow-y-auto"
-               style={{ maxHeight: `${size.height - 160}px` }}>
+               style={{ maxHeight: `${(size?.height || 240) - 160}px` }}>
               {content}
             </p>
             
