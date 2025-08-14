@@ -23,6 +23,7 @@ interface CardData {
   title: string;
   content: string;
   position: Position;
+  size?: { width: number; height: number };
   tags: string[];
   color: string;
 }
@@ -34,6 +35,7 @@ export default function Whiteboard() {
       title: "Deep Learning Fundamentals",
       content: "Understanding neural networks, backpropagation, and gradient descent. Key concepts include layers, weights, biases, and activation functions.",
       position: { x: 100, y: 100 },
+      size: { width: 320, height: 240 },
       tags: ["machine-learning", "ai"],
       color: "accent-purple",
     },
@@ -42,6 +44,7 @@ export default function Whiteboard() {
       title: "Philosophy of Mind",
       content: "Exploring consciousness, qualia, and the hard problem of consciousness. How does subjective experience arise from physical processes?",
       position: { x: 400, y: 200 },
+      size: { width: 320, height: 240 },
       tags: ["philosophy", "consciousness"],
       color: "accent-blue",
     },
@@ -50,6 +53,7 @@ export default function Whiteboard() {
       title: "Design Systems",
       content: "Creating consistent, scalable design languages. Includes color palettes, typography, spacing, and component libraries.",
       position: { x: 700, y: 150 },
+      size: { width: 320, height: 240 },
       tags: ["design", "ui-ux"],
       color: "accent-green",
     },
@@ -108,12 +112,14 @@ export default function Whiteboard() {
     // Update connections when card moves - using precise positioning
     setConnections(prev => prev.map(conn => {
       const updatedConn = { ...conn };
+      const card = cards.find(c => c.id === id);
+      const cardSize = card?.size || { width: 320, height: 240 };
       
       if (conn.fromCardId === id) {
         // Right edge connection point for "from" card
         updatedConn.fromPosition = { 
-          x: newPosition.x + 320, // card width
-          y: newPosition.y + 120   // approximately middle of card (card height ~240px)
+          x: newPosition.x + cardSize.width, // card width
+          y: newPosition.y + cardSize.height / 2   // middle of card height
         };
       }
       
@@ -121,7 +127,36 @@ export default function Whiteboard() {
         // Left edge connection point for "to" card
         updatedConn.toPosition = { 
           x: newPosition.x, 
-          y: newPosition.y + 120 // approximately middle of card
+          y: newPosition.y + cardSize.height / 2 // middle of card
+        };
+      }
+      
+      return updatedConn;
+    }));
+  };
+
+  const updateCardSize = (id: string, newSize: { width: number; height: number }) => {
+    console.log(`Updating card ${id} size to:`, newSize);
+    setCards(prev => prev.map(card => 
+      card.id === id ? { ...card, size: newSize } : card
+    ));
+    
+    // Update connections when card size changes
+    setConnections(prev => prev.map(conn => {
+      const updatedConn = { ...conn };
+      const card = cards.find(c => c.id === id);
+      
+      if (conn.fromCardId === id && card) {
+        updatedConn.fromPosition = { 
+          x: card.position.x + newSize.width,
+          y: card.position.y + newSize.height / 2
+        };
+      }
+      
+      if (conn.toCardId === id && card) {
+        updatedConn.toPosition = { 
+          x: card.position.x,
+          y: card.position.y + newSize.height / 2
         };
       }
       
@@ -189,17 +224,20 @@ export default function Whiteboard() {
       const toCard = cards.find(card => card.id === cardId);
       
       if (fromCard && toCard) {
+        const fromSize = fromCard.size || { width: 320, height: 240 };
+        const toSize = toCard.size || { width: 320, height: 240 };
+        
         const newConnection: Connection = {
           id: `${connectingFrom}-${cardId}-${Date.now()}`,
           fromCardId: connectingFrom,
           toCardId: cardId,
           fromPosition: { 
-            x: fromCard.position.x + 320, // right edge of from card
-            y: fromCard.position.y + 120  // middle of from card
+            x: fromCard.position.x + fromSize.width, // right edge of from card
+            y: fromCard.position.y + fromSize.height / 2  // middle of from card
           },
           toPosition: { 
             x: toCard.position.x,         // left edge of to card
-            y: toCard.position.y + 120    // middle of to card
+            y: toCard.position.y + toSize.height / 2    // middle of to card
           },
         };
         
@@ -324,7 +362,9 @@ export default function Whiteboard() {
               tags={card.tags}
               color={card.color}
               position={card.position}
+              size={card.size}
               onPositionChange={updateCardPosition}
+              onSizeChange={updateCardSize}
               onDelete={deleteCard}
               onUpdate={updateCard}
               onStartConnection={handleStartConnection}

@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,6 +13,8 @@ import {
   Save,
   X,
   Plus,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -25,6 +28,11 @@ interface Position {
   y: number;
 }
 
+interface Size {
+  width: number;
+  height: number;
+}
+
 interface KnowledgeCardProps {
   id: string;
   title: string;
@@ -32,7 +40,9 @@ interface KnowledgeCardProps {
   tags: string[];
   color: string;
   position: Position;
+  size?: Size;
   onPositionChange: (id: string, position: Position) => void;
+  onSizeChange?: (id: string, size: Size) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: any) => void;
   onStartConnection: (cardId: string, position: Position) => void;
@@ -48,7 +58,9 @@ export default function KnowledgeCard({
   tags,
   color,
   position,
+  size = { width: 320, height: 240 },
   onPositionChange,
+  onSizeChange,
   onDelete,
   onUpdate,
   onStartConnection,
@@ -131,13 +143,33 @@ export default function KnowledgeCard({
     setIsEditing(false);
   };
 
+  const handleIncreaseSize = () => {
+    if (onSizeChange) {
+      const newSize = {
+        width: Math.min(size.width + 80, 600), // máximo 600px
+        height: Math.min(size.height + 60, 400), // máximo 400px
+      };
+      onSizeChange(id, newSize);
+    }
+  };
+
+  const handleDecreaseSize = () => {
+    if (onSizeChange) {
+      const newSize = {
+        width: Math.max(size.width - 80, 240), // mínimo 240px
+        height: Math.max(size.height - 60, 180), // mínimo 180px
+      };
+      onSizeChange(id, newSize);
+    }
+  };
+
   const handleStartConnection = (e: React.MouseEvent) => {
     e.stopPropagation();
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       // Calculate the exact position of the right connection point
-      const connectionX = position.x + 320; // card width (320px) to get right edge
-      const connectionY = position.y + rect.height / 2; // middle of card height
+      const connectionX = position.x + size.width; // right edge using actual card width
+      const connectionY = position.y + size.height / 2; // middle of card height
       console.log(`Start connection from card ${id} at position:`, { x: connectionX, y: connectionY });
       onStartConnection(id, { x: connectionX, y: connectionY });
     }
@@ -149,7 +181,7 @@ export default function KnowledgeCard({
     if (rect) {
       // Calculate the exact position of the left connection point
       const connectionX = position.x; // left edge of card
-      const connectionY = position.y + rect.height / 2; // middle of card height
+      const connectionY = position.y + size.height / 2; // middle of card height
       console.log(`End connection to card ${id} at position:`, { x: connectionX, y: connectionY });
       onEndConnection(id, { x: connectionX, y: connectionY });
     }
@@ -166,7 +198,7 @@ export default function KnowledgeCard({
     <div
       ref={cardRef}
       className={`
-        absolute w-80 bg-card-bg border-2 rounded-lg shadow-soft hover:shadow-medium transition-all duration-200 select-none
+        absolute bg-card-bg border-2 rounded-lg shadow-soft hover:shadow-medium transition-all duration-200 select-none
         ${colorClasses[color as keyof typeof colorClasses] || colorClasses["accent-purple"]}
         ${isDragging ? "cursor-grabbing shadow-large scale-105 z-50" : !disabled ? "cursor-grab" : "cursor-default"}
         ${disabled ? "opacity-50" : ""}
@@ -174,6 +206,8 @@ export default function KnowledgeCard({
       style={{
         left: position.x,
         top: position.y,
+        width: size.width,
+        height: size.height,
         transform: `scale(${scale})`,
         transformOrigin: "0 0",
       }}
@@ -195,48 +229,72 @@ export default function KnowledgeCard({
             </h3>
           )}
           
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-60 hover:opacity-100">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              <DropdownMenuItem onClick={() => setIsEditing(true)}>
-                <Edit3 className="h-4 w-4 mr-2" />
-                Edit
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleStartConnection}>
-                <Plus className="h-4 w-4 mr-2" />
-                Start Connection
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onDelete(id)} className="text-destructive">
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-center gap-1">
+            {/* Size controls */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+              onClick={handleDecreaseSize}
+              title="Diminuir card"
+            >
+              <Minimize2 className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
+              onClick={handleIncreaseSize}
+              title="Aumentar card"
+            >
+              <Maximize2 className="h-3 w-3" />
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-60 hover:opacity-100">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-32">
+                <DropdownMenuItem onClick={() => setIsEditing(true)}>
+                  <Edit3 className="h-4 w-4 mr-2" />
+                  Edit
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleStartConnection}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Start Connection
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onDelete(id)} className="text-destructive">
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="p-4">
+      <div className="p-4 flex-1 overflow-hidden">
         {isEditing ? (
           <Textarea
             value={editContent}
             onChange={(e) => setEditContent(e.target.value)}
-            className="min-h-[100px] bg-transparent border-none p-0 resize-none focus-visible:ring-0"
+            className="w-full h-full bg-transparent border-none p-0 resize-none focus-visible:ring-0"
+            style={{ minHeight: `${size.height - 160}px` }}
             placeholder="Write your thoughts here..."
           />
         ) : (
-          <p className="text-sm text-card-foreground/80 leading-relaxed">
+          <p className="text-sm text-card-foreground/80 leading-relaxed overflow-y-auto"
+             style={{ maxHeight: `${size.height - 160}px` }}>
             {content}
           </p>
         )}
       </div>
 
       {/* Tags */}
-      <div className="px-4 pb-4">
+      <div className="px-4 pb-4 mt-auto">
         {isEditing ? (
           <div className="space-y-2">
             <Input
