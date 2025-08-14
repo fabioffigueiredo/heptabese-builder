@@ -3,11 +3,13 @@ import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import Whiteboard from "@/components/Whiteboard";
 import CardDatabase from "@/components/Database/CardDatabase";
+import CardLibrary from "@/components/Library/CardLibrary";
+import ContentExtractor from "@/components/Extraction/ContentExtractor";
 import { EnhancedCardData, CardProperties } from "@/types/heptabase";
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [currentView, setCurrentView] = useState<'whiteboard' | 'database'>('whiteboard');
+  const [currentView, setCurrentView] = useState<'whiteboard' | 'database' | 'library' | 'extractor'>('whiteboard');
   
   // Enhanced cards with properties for database view
   const [enhancedCards, setEnhancedCards] = useState<EnhancedCardData[]>([
@@ -123,15 +125,54 @@ const Index = () => {
           currentView={currentView}
         />
         
-        {currentView === 'whiteboard' ? (
-          <Whiteboard />
-        ) : (
+        {currentView === 'whiteboard' && <Whiteboard />}
+        {currentView === 'database' && (
           <CardDatabase
             cards={enhancedCards}
             onCardUpdate={handleCardUpdate}
             onCardCreate={handleCardCreate}
             onViewModeChange={setCurrentView}
             currentView={currentView}
+          />
+        )}
+        {currentView === 'library' && (
+          <CardLibrary
+            cards={enhancedCards}
+            onCardSelect={(card) => {
+              const newCard = { ...card, id: `card-${Date.now()}` };
+              setEnhancedCards(prev => [...prev, newCard]);
+              setCurrentView('whiteboard');
+            }}
+            onCardDuplicate={(card) => {
+              const duplicate = { ...card, id: `card-${Date.now()}`, title: `${card.title} (Copy)` };
+              setEnhancedCards(prev => [...prev, duplicate]);
+            }}
+            onCardUpdate={handleCardUpdate}
+          />
+        )}
+        {currentView === 'extractor' && (
+          <ContentExtractor
+            onCardCreate={(cardData) => {
+              const newCard: EnhancedCardData = {
+                id: `card-${Date.now()}`,
+                title: cardData?.title || "Extracted Content",
+                content: cardData?.content || "",
+                position: { x: 150, y: 150 },
+                tags: cardData?.tags || ["extracted"],
+                color: "accent-purple",
+                properties: {
+                  status: 'todo',
+                  priority: 'medium',
+                  dateCreated: new Date(),
+                  dateModified: new Date(),
+                  category: 'research',
+                  ...cardData?.properties
+                },
+                linkedCards: [],
+                backlinks: []
+              };
+              setEnhancedCards(prev => [...prev, newCard]);
+            }}
           />
         )}
       </div>

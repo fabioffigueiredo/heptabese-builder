@@ -2,16 +2,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import InlineEditor from "./Cards/InlineEditor";
 import {
   MoreHorizontal,
   Edit3,
   Trash2,
   Hash,
   Link2,
-  Save,
-  X,
   Plus,
 } from "lucide-react";
 import {
@@ -67,9 +65,6 @@ export default function KnowledgeCard({
   scale = 1,
 }: KnowledgeCardProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editTitle, setEditTitle] = useState(title);
-  const [editContent, setEditContent] = useState(content);
-  const [editTags, setEditTags] = useState(tags.join(", "));
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const [isResizing, setIsResizing] = useState(false);
@@ -183,19 +178,12 @@ export default function KnowledgeCard({
     }
   }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
-  const handleSave = () => {
-    onUpdate(id, {
-      title: editTitle,
-      content: editContent,
-      tags: editTags.split(",").map(tag => tag.trim()).filter(tag => tag),
-    });
+  const handleSave = (data: { title: string; content: string; tags: string[] }) => {
+    onUpdate(id, data);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditTitle(title);
-    setEditContent(content);
-    setEditTags(tags.join(", "));
     setIsEditing(false);
   };
 
@@ -270,18 +258,9 @@ export default function KnowledgeCard({
       {/* Header */}
       <div className="p-4 border-b border-border/50">
         <div className="flex items-start justify-between gap-2">
-          {isEditing ? (
-            <Input
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="text-base font-semibold bg-transparent border-none p-0 h-auto focus-visible:ring-0"
-              placeholder="Card title..."
-            />
-          ) : (
-            <h3 className="text-base font-semibold text-card-foreground leading-tight">
-              {title}
-            </h3>
-          )}
+          <h3 className="text-base font-semibold text-card-foreground leading-tight">
+            {title}
+          </h3>
           
           <div className="flex items-center gap-1">
             <DropdownMenu>
@@ -312,55 +291,34 @@ export default function KnowledgeCard({
       {/* Content */}
       <div className="p-4 flex-1 overflow-hidden">
         {isEditing ? (
-          <Textarea
-            value={editContent}
-            onChange={(e) => setEditContent(e.target.value)}
-            className="w-full h-full bg-transparent border-none p-0 resize-none focus-visible:ring-0"
-            style={{ minHeight: `${size.height - 160}px` }}
-            placeholder="Write your thoughts here..."
+          <InlineEditor
+            title={title}
+            content={content}
+            tags={tags}
+            onSave={handleSave}
+            onCancel={handleCancel}
           />
         ) : (
-          <p className="text-sm text-card-foreground/80 leading-relaxed overflow-y-auto"
-             style={{ maxHeight: `${size.height - 160}px` }}>
-            {content}
-          </p>
-        )}
-      </div>
-
-      {/* Tags */}
-      <div className="px-4 pb-4 mt-auto">
-        {isEditing ? (
-          <div className="space-y-2">
-            <Input
-              value={editTags}
-              onChange={(e) => setEditTags(e.target.value)}
-              placeholder="tag1, tag2, tag3..."
-              className="text-xs bg-transparent border-border/50"
-            />
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleSave} variant="default">
-                <Save className="h-3 w-3 mr-1" />
-                Save
-              </Button>
-              <Button size="sm" onClick={handleCancel} variant="ghost">
-                <X className="h-3 w-3 mr-1" />
-                Cancel
-              </Button>
+          <>
+            <p className="text-sm text-card-foreground/80 leading-relaxed overflow-y-auto"
+               style={{ maxHeight: `${size.height - 160}px` }}>
+              {content}
+            </p>
+            
+            {/* Tags */}
+            <div className="flex flex-wrap gap-1 mt-4">
+              {tags.map((tag, index) => (
+                <Badge
+                  key={index}
+                  variant="secondary"
+                  className="text-xs px-2 py-0.5 bg-background/60 text-foreground/70 border-border/50"
+                >
+                  <Hash className="h-2.5 w-2.5 mr-1" />
+                  {tag}
+                </Badge>
+              ))}
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-wrap gap-1">
-            {tags.map((tag, index) => (
-              <Badge
-                key={index}
-                variant="secondary"
-                className="text-xs px-2 py-0.5 bg-background/60 text-foreground/70 border-border/50"
-              >
-                <Hash className="h-2.5 w-2.5 mr-1" />
-                {tag}
-              </Badge>
-            ))}
-          </div>
+          </>
         )}
       </div>
 

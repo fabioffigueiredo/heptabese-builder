@@ -15,12 +15,16 @@ import {
   ChevronRight,
   Folder,
   Map,
+  Database,
+  Archive,
+  Download,
+  Grid3X3
 } from "lucide-react";
 
 interface SidebarProps {
   isCollapsed?: boolean;
-  onViewModeChange?: (mode: 'whiteboard' | 'database') => void;
-  currentView?: 'whiteboard' | 'database';
+  onViewModeChange?: (mode: 'whiteboard' | 'database' | 'library' | 'extractor') => void;
+  currentView?: 'whiteboard' | 'database' | 'library' | 'extractor';
 }
 
 export default function Sidebar({ 
@@ -110,21 +114,39 @@ export default function Sidebar({
       {/* Content */}
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-6">
-          {/* Quick Actions */}
-          <div className="space-y-2">
+          {/* Views */}
+          <div className="space-y-1">
             <Button 
-              variant="ghost" 
-              className="w-full justify-start gap-2 h-9 text-sm hover:bg-accent/50"
+              variant={currentView === 'whiteboard' ? 'default' : 'ghost'}
+              onClick={() => onViewModeChange?.('whiteboard')}
+              className="w-full justify-start gap-2 h-9 text-sm"
             >
-              <Plus className="h-4 w-4" />
-              New Card
+              <Grid3X3 className="h-4 w-4" />
+              Whiteboard
             </Button>
             <Button 
-              variant="ghost" 
-              className="w-full justify-start gap-2 h-9 text-sm hover:bg-accent/50"
+              variant={currentView === 'database' ? 'default' : 'ghost'}
+              onClick={() => onViewModeChange?.('database')}
+              className="w-full justify-start gap-2 h-9 text-sm"
             >
-              <FileText className="h-4 w-4" />
-              New Whiteboard
+              <Database className="h-4 w-4" />
+              Database
+            </Button>
+            <Button 
+              variant={currentView === 'library' ? 'default' : 'ghost'}
+              onClick={() => onViewModeChange?.('library')}
+              className="w-full justify-start gap-2 h-9 text-sm"
+            >
+              <Archive className="h-4 w-4" />
+              Library
+            </Button>
+            <Button 
+              variant={currentView === 'extractor' ? 'default' : 'ghost'}
+              onClick={() => onViewModeChange?.('extractor')}
+              className="w-full justify-start gap-2 h-9 text-sm"
+            >
+              <Download className="h-4 w-4" />
+              Extractor
             </Button>
           </div>
 
