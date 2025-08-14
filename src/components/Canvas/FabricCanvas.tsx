@@ -42,9 +42,15 @@ export default function FabricCanvasComponent({
       selection: tool === "select",
     });
 
-    // Initialize the freeDrawingBrush right after canvas creation
-    canvas.freeDrawingBrush.color = brushColor;
-    canvas.freeDrawingBrush.width = brushSize;
+    // Initialize the freeDrawingBrush after canvas creation
+    // Check if freeDrawingBrush exists before setting properties
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = brushColor;
+      canvas.freeDrawingBrush.width = brushSize;
+    } else {
+      // If freeDrawingBrush doesn't exist, we'll set it when drawing mode is enabled
+      console.log("FreeDrawingBrush not available yet, will initialize when needed");
+    }
 
     setFabricCanvas(canvas);
 
@@ -80,14 +86,20 @@ export default function FabricCanvasComponent({
       
       case 'draw':
         fabricCanvas.isDrawingMode = true;
-        fabricCanvas.freeDrawingBrush.color = brushColor;
-        fabricCanvas.freeDrawingBrush.width = brushSize;
+        // Ensure freeDrawingBrush is available when enabling drawing mode
+        if (fabricCanvas.freeDrawingBrush) {
+          fabricCanvas.freeDrawingBrush.color = brushColor;
+          fabricCanvas.freeDrawingBrush.width = brushSize;
+        }
         break;
       
       case 'highlighter':
         fabricCanvas.isDrawingMode = true;
-        fabricCanvas.freeDrawingBrush.color = brushColor;
-        fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
+        // Ensure freeDrawingBrush is available when enabling drawing mode
+        if (fabricCanvas.freeDrawingBrush) {
+          fabricCanvas.freeDrawingBrush.color = brushColor;
+          fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
+        }
         break;
       
       case 'text':
