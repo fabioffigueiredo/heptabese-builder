@@ -40,7 +40,7 @@ export interface CardData {
 // Drawing Elements
 export interface DrawingElement {
   id: string;
-  type: 'shape' | 'drawing' | 'image' | 'video' | 'pdf' | 'link' | 'markdown' | 'text';
+  type: 'shape' | 'drawing' | 'image' | 'video' | 'pdf' | 'link' | 'markdown' | 'text' | 'sticky-note';
   position: Position;
   size?: Size;
   properties: ElementProperties;
@@ -74,6 +74,10 @@ export interface ElementProperties {
   fontWeight?: string;
   textAlign?: 'left' | 'center' | 'right';
   
+  // Sticky note properties
+  stickyColor?: string;
+  stickyText?: string;
+  
   // Markdown properties
   markdown?: string;
 }
@@ -87,6 +91,7 @@ export type WhiteboardTool =
   | 'highlighter'
   | 'text'
   | 'shape'
+  | 'sticky-note'
   | 'image'
   | 'video'
   | 'pdf'

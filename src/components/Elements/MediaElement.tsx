@@ -4,6 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ExternalLink, Play, Pause, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import StickyNote from "@/components/StickyNote/StickyNote";
 
 interface MediaElementProps {
   element: DrawingElement;
@@ -13,6 +14,17 @@ interface MediaElementProps {
 }
 
 export default function MediaElement({ element, onUpdate, onDelete, scale }: MediaElementProps) {
+  // Handle sticky notes separately
+  if (element.type === 'sticky-note') {
+    return (
+      <StickyNote
+        element={element}
+        onUpdate={onUpdate}
+        onDelete={onDelete}
+      />
+    );
+  }
+
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });

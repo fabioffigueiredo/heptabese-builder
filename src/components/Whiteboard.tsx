@@ -62,6 +62,7 @@ export default function Whiteboard() {
   const [drawingElements, setDrawingElements] = useState<DrawingElement[]>([]);
   const [brushSize, setBrushSize] = useState(2);
   const [brushColor, setBrushColor] = useState("#000000");
+  const [stickyNoteColor, setStickyNoteColor] = useState("#fbbf24");
   const whiteboardRef = useRef<HTMLDivElement>(null);
 
   const handleZoomIn = () => {
@@ -289,12 +290,14 @@ export default function Whiteboard() {
         zoom={zoom}
         brushSize={brushSize}
         brushColor={brushColor}
+        stickyNoteColor={stickyNoteColor}
         onToolChange={setTool}
         onShapeToolChange={setShapeTool}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onBrushSizeChange={setBrushSize}
         onBrushColorChange={setBrushColor}
+        onStickyNoteColorChange={setStickyNoteColor}
         onAddCard={addNewCard}
         onConnect={handleConnect}
       />
@@ -306,17 +309,18 @@ export default function Whiteboard() {
           tool === 'pan' ? 'cursor-grab' : 
           tool === 'draw' || tool === 'highlighter' ? 'cursor-crosshair' :
           tool === 'text' ? 'cursor-text' :
+          tool === 'sticky-note' ? 'cursor-pointer' :
           tool === 'connect' ? 'cursor-cell' :
           'cursor-default'
         } ${isPanning ? "cursor-grabbing" : ""}`}
-        onMouseDown={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseDown : undefined}
-        onMouseMove={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseMove : undefined}
-        onMouseUp={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseUp : undefined}
-        onMouseLeave={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' ? handleMouseUp : undefined}
+        onMouseDown={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' && tool !== 'sticky-note' ? handleMouseDown : undefined}
+        onMouseMove={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' && tool !== 'sticky-note' ? handleMouseMove : undefined}
+        onMouseUp={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' && tool !== 'sticky-note' ? handleMouseUp : undefined}
+        onMouseLeave={tool !== 'draw' && tool !== 'highlighter' && tool !== 'shape' && tool !== 'text' && tool !== 'sticky-note' ? handleMouseUp : undefined}
         style={{
           transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
           transformOrigin: '0 0',
-          pointerEvents: tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text' ? 'none' : 'auto',
+          pointerEvents: tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text' || tool === 'sticky-note' ? 'none' : 'auto',
         }}
       >
         {/* Grid Background */}
@@ -347,6 +351,7 @@ export default function Whiteboard() {
           shapeTool={shapeTool}
           brushSize={brushSize}
           brushColor={brushColor}
+          stickyNoteColor={stickyNoteColor}
           zoom={zoom}
           pan={pan}
           onElementAdd={handleElementAdd}

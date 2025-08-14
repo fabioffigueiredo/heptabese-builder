@@ -8,6 +8,7 @@ interface FabricCanvasProps {
   shapeTool: ShapeTool;
   brushSize: number;
   brushColor: string;
+  stickyNoteColor?: string;
   zoom: number;
   pan: Position;
   onElementAdd: (element: DrawingElement) => void;
@@ -20,6 +21,7 @@ export default function FabricCanvasComponent({
   shapeTool,
   brushSize,
   brushColor,
+  stickyNoteColor = "#fbbf24",
   zoom,
   pan,
   onElementAdd,
@@ -133,8 +135,10 @@ export default function FabricCanvasComponent({
       addShape(pointer, shapeTool);
     } else if (tool === 'text') {
       addText(pointer);
+    } else if (tool === 'sticky-note') {
+      addStickyNote(pointer);
     }
-  }, [fabricCanvas, tool, shapeTool]);
+  }, [fabricCanvas, tool, shapeTool, stickyNoteColor]);
 
   const addShape = (pointer: { x: number; y: number }, type: ShapeTool) => {
     if (!fabricCanvas) return;
@@ -234,6 +238,23 @@ export default function FabricCanvasComponent({
     toast("Text added - click to edit");
   };
 
+  const addStickyNote = (pointer: { x: number; y: number }) => {
+    const element: DrawingElement = {
+      id: `sticky-${Date.now()}`,
+      type: 'sticky-note',
+      position: { x: pointer.x, y: pointer.y },
+      size: { width: 200, height: 150 },
+      properties: {
+        stickyColor: stickyNoteColor,
+        stickyText: "New note",
+      },
+      layer: 1,
+    };
+
+    onElementAdd(element);
+    toast("Sticky note added - double click to edit");
+  };
+
   // Handle drawing events
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -265,7 +286,7 @@ export default function FabricCanvasComponent({
     };
   }, [fabricCanvas, handleMouseDown, onElementAdd, brushSize, brushColor, tool]);
 
-  const isDrawingTool = tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text';
+  const isDrawingTool = tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text' || tool === 'sticky-note';
   
   return (
     <div 
