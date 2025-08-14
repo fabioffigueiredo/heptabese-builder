@@ -13,8 +13,6 @@ import {
   Save,
   X,
   Plus,
-  Maximize2,
-  Minimize2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -74,15 +72,18 @@ export default function KnowledgeCard({
   const [editTags, setEditTags] = useState(tags.join(", "));
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isResizing, setIsResizing] = useState(false);
+  const [resizeType, setResizeType] = useState('');
+  const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0, posX: 0, posY: 0 });
   
   const cardRef = useRef<HTMLDivElement>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (disabled || isEditing) return;
+    if (disabled || isEditing || isResizing) return;
     
-    // Prevent drag if clicking on buttons or inputs
+    // Prevent drag if clicking on buttons or inputs or resize handles
     const target = e.target as HTMLElement;
-    if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
+    if (target.closest('button') || target.closest('input') || target.closest('textarea') || target.closest('.resize-handle')) {
       return;
     }
     
@@ -97,26 +98,81 @@ export default function KnowledgeCard({
       });
       setIsDragging(true);
     }
-  }, [disabled, isEditing, position]);
+  }, [disabled, isEditing, isResizing, position]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
-    if (isDragging && !disabled) {
+    if (isDragging && !disabled && !isResizing) {
       e.preventDefault();
       const newPosition = {
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y,
       };
       onPositionChange(id, newPosition);
+    } else if (isResizing && onSizeChange) {
+      e.preventDefault();
+      const deltaX = e.clientX - resizeStart.x;
+      const deltaY = e.clientY - resizeStart.y;
+      
+      let newSize = { width: size.width, height: size.height };
+      let newPosition = { x: position.x, y: position.y };
+      
+      switch (resizeType) {
+        case 'nw': // northwest
+          newSize.width = Math.max(200, resizeStart.width - deltaX);
+          newSize.height = Math.max(150, resizeStart.height - deltaY);
+          newPosition.x = resizeStart.posX + (resizeStart.width - newSize.width);
+          newPosition.y = resizeStart.posY + (resizeStart.height - newSize.height);
+          break;
+        case 'n': // north
+          newSize.height = Math.max(150, resizeStart.height - deltaY);
+          newPosition.y = resizeStart.posY + (resizeStart.height - newSize.height);
+          break;
+        case 'ne': // northeast
+          newSize.width = Math.max(200, resizeStart.width + deltaX);
+          newSize.height = Math.max(150, resizeStart.height - deltaY);
+          newPosition.y = resizeStart.posY + (resizeStart.height - newSize.height);
+          break;
+        case 'e': // east
+          newSize.width = Math.max(200, resizeStart.width + deltaX);
+          break;
+        case 'se': // southeast
+          newSize.width = Math.max(200, resizeStart.width + deltaX);
+          newSize.height = Math.max(150, resizeStart.height + deltaY);
+          break;
+        case 's': // south
+          newSize.height = Math.max(150, resizeStart.height + deltaY);
+          break;
+        case 'sw': // southwest
+          newSize.width = Math.max(200, resizeStart.width - deltaX);
+          newSize.height = Math.max(150, resizeStart.height + deltaY);
+          newPosition.x = resizeStart.posX + (resizeStart.width - newSize.width);
+          break;
+        case 'w': // west
+          newSize.width = Math.max(200, resizeStart.width - deltaX);
+          newPosition.x = resizeStart.posX + (resizeStart.width - newSize.width);
+          break;
+      }
+      
+      // Apply max size constraints
+      newSize.width = Math.min(800, newSize.width);
+      newSize.height = Math.min(600, newSize.height);
+      
+      onSizeChange(id, newSize);
+      if (newPosition.x !== position.x || newPosition.y !== position.y) {
+        onPositionChange(id, newPosition);
+      }
     }
-  }, [isDragging, dragOffset, id, onPositionChange, disabled]);
+  }, [isDragging, isResizing, dragOffset, resizeStart, resizeType, id, onPositionChange, onSizeChange, disabled, size, position]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
+    setIsResizing(false);
+    setResizeType('');
   }, []);
 
-  // Add global mouse event listeners for dragging
+  // Add global mouse event listeners for dragging and resizing
   useEffect(() => {
-    if (isDragging) {
+    if (isDragging || isResizing) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
       
@@ -125,7 +181,7 @@ export default function KnowledgeCard({
         document.removeEventListener("mouseup", handleMouseUp);
       };
     }
-  }, [isDragging, handleMouseMove, handleMouseUp]);
+  }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
   const handleSave = () => {
     onUpdate(id, {
@@ -143,25 +199,23 @@ export default function KnowledgeCard({
     setIsEditing(false);
   };
 
-  const handleIncreaseSize = () => {
-    if (onSizeChange) {
-      const newSize = {
-        width: Math.min(size.width + 80, 600), // máximo 600px
-        height: Math.min(size.height + 60, 400), // máximo 400px
-      };
-      onSizeChange(id, newSize);
-    }
-  };
-
-  const handleDecreaseSize = () => {
-    if (onSizeChange) {
-      const newSize = {
-        width: Math.max(size.width - 80, 240), // mínimo 240px
-        height: Math.max(size.height - 60, 180), // mínimo 180px
-      };
-      onSizeChange(id, newSize);
-    }
-  };
+  const handleResizeStart = useCallback((e: React.MouseEvent, type: string) => {
+    if (disabled || isEditing) return;
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setIsResizing(true);
+    setResizeType(type);
+    setResizeStart({
+      x: e.clientX,
+      y: e.clientY,
+      width: size.width,
+      height: size.height,
+      posX: position.x,
+      posY: position.y,
+    });
+  }, [disabled, isEditing, size, position]);
 
   const handleStartConnection = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -200,7 +254,7 @@ export default function KnowledgeCard({
       className={`
         absolute bg-card-bg border-2 rounded-lg shadow-soft hover:shadow-medium transition-all duration-200 select-none
         ${colorClasses[color as keyof typeof colorClasses] || colorClasses["accent-purple"]}
-        ${isDragging ? "cursor-grabbing shadow-large scale-105 z-50" : !disabled ? "cursor-grab" : "cursor-default"}
+        ${isDragging ? "cursor-grabbing shadow-large scale-105 z-50" : isResizing ? "z-50" : !disabled ? "cursor-grab" : "cursor-default"}
         ${disabled ? "opacity-50" : ""}
       `}
       style={{
@@ -230,26 +284,6 @@ export default function KnowledgeCard({
           )}
           
           <div className="flex items-center gap-1">
-            {/* Size controls */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-              onClick={handleDecreaseSize}
-              title="Diminuir card"
-            >
-              <Minimize2 className="h-3 w-3" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 opacity-60 hover:opacity-100"
-              onClick={handleIncreaseSize}
-              title="Aumentar card"
-            >
-              <Maximize2 className="h-3 w-3" />
-            </Button>
-            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="sm" className="h-6 w-6 p-0 opacity-60 hover:opacity-100">
@@ -352,6 +386,47 @@ export default function KnowledgeCard({
           <Link2 className="h-2 w-2 text-white" />
         </Button>
       </div>
+
+      {/* Resize handles */}
+      {!disabled && !isEditing && (
+        <>
+          {/* Corner handles */}
+          <div 
+            className="resize-handle absolute -top-1 -left-1 w-3 h-3 bg-primary/60 hover:bg-primary rounded-full cursor-nw-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'nw')}
+          />
+          <div 
+            className="resize-handle absolute -top-1 -right-1 w-3 h-3 bg-primary/60 hover:bg-primary rounded-full cursor-ne-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'ne')}
+          />
+          <div 
+            className="resize-handle absolute -bottom-1 -left-1 w-3 h-3 bg-primary/60 hover:bg-primary rounded-full cursor-sw-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'sw')}
+          />
+          <div 
+            className="resize-handle absolute -bottom-1 -right-1 w-3 h-3 bg-primary/60 hover:bg-primary rounded-full cursor-se-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'se')}
+          />
+          
+          {/* Edge handles */}
+          <div 
+            className="resize-handle absolute -top-1 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-primary/60 hover:bg-primary rounded cursor-n-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'n')}
+          />
+          <div 
+            className="resize-handle absolute -right-1 top-1/2 transform -translate-y-1/2 w-2 h-6 bg-primary/60 hover:bg-primary rounded cursor-e-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'e')}
+          />
+          <div 
+            className="resize-handle absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-primary/60 hover:bg-primary rounded cursor-s-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 's')}
+          />
+          <div 
+            className="resize-handle absolute -left-1 top-1/2 transform -translate-y-1/2 w-2 h-6 bg-primary/60 hover:bg-primary rounded cursor-w-resize opacity-0 hover:opacity-100 transition-opacity"
+            onMouseDown={(e) => handleResizeStart(e, 'w')}
+          />
+        </>
+      )}
     </div>
   );
 }
