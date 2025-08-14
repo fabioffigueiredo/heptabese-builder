@@ -1,11 +1,21 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import KnowledgeCard from "./KnowledgeCard";
-import { Plus, ZoomIn, ZoomOut, Move, Hand } from "lucide-react";
+import ConnectionCanvas from "./ConnectionCanvas";
+import { Plus, ZoomIn, ZoomOut, Move, Hand, Link } from "lucide-react";
+import { toast } from "sonner";
 
 interface Position {
   x: number;
   y: number;
+}
+
+interface Connection {
+  id: string;
+  fromCardId: string;
+  toCardId: string;
+  fromPosition: { x: number; y: number };
+  toPosition: { x: number; y: number };
 }
 
 interface CardData {
@@ -45,9 +55,11 @@ export default function Whiteboard() {
     },
   ]);
 
+  const [connections, setConnections] = useState<Connection[]>([]);
+  const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [tool, setTool] = useState<"select" | "pan">("select");
+  const [tool, setTool] = useState<"select" | "pan" | "connect">("select");
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const whiteboardRef = useRef<HTMLDivElement>(null);
@@ -89,6 +101,17 @@ export default function Whiteboard() {
     setCards(prev => prev.map(card => 
       card.id === id ? { ...card, position: newPosition } : card
     ));
+    
+    // Update connections when card moves
+    setConnections(prev => prev.map(conn => {
+      if (conn.fromCardId === id) {
+        return { ...conn, fromPosition: { x: newPosition.x + 160, y: newPosition.y + 100 } };
+      }
+      if (conn.toCardId === id) {
+        return { ...conn, toPosition: { x: newPosition.x + 160, y: newPosition.y + 100 } };
+      }
+      return conn;
+    }));
   };
 
   const addNewCard = () => {
@@ -108,12 +131,47 @@ export default function Whiteboard() {
 
   const deleteCard = (id: string) => {
     setCards(prev => prev.filter(card => card.id !== id));
+    // Remove connections related to deleted card
+    setConnections(prev => prev.filter(conn => 
+      conn.fromCardId !== id && conn.toCardId !== id
+    ));
   };
 
   const updateCard = (id: string, updates: Partial<CardData>) => {
     setCards(prev => prev.map(card => 
       card.id === id ? { ...card, ...updates } : card
     ));
+  };
+
+  const handleStartConnection = (cardId: string, position: Position) => {
+    if (tool === "connect" || !connectingFrom) {
+      setConnectingFrom(cardId);
+      setTool("connect");
+      toast("Click on another card to connect them!");
+    }
+  };
+
+  const handleEndConnection = (cardId: string, position: Position) => {
+    if (connectingFrom && connectingFrom !== cardId) {
+      const fromCard = cards.find(card => card.id === connectingFrom);
+      const toCard = cards.find(card => card.id === cardId);
+      
+      if (fromCard && toCard) {
+        const newConnection: Connection = {
+          id: `${connectingFrom}-${cardId}-${Date.now()}`,
+          fromCardId: connectingFrom,
+          toCardId: cardId,
+          fromPosition: { x: fromCard.position.x + 160, y: fromCard.position.y + 100 },
+          toPosition: { x: toCard.position.x + 160, y: toCard.position.y + 100 },
+        };
+        
+        setConnections(prev => [...prev, newConnection]);
+        toast("Cards connected successfully!");
+      }
+      
+      setConnectingFrom(null);
+      setTool("select");
+    }
   };
 
   return (
@@ -146,6 +204,17 @@ export default function Whiteboard() {
         <Button variant="ghost" size="sm" onClick={handleZoomIn}>
           <ZoomIn className="h-4 w-4" />
         </Button>
+        <Button
+          variant={tool === "connect" ? "default" : "ghost"}
+          size="sm"
+          onClick={() => {
+            setTool("connect");
+            setConnectingFrom(null);
+            toast("Connection mode: Click a card to start connecting!");
+          }}
+        >
+          <Link className="h-4 w-4" />
+        </Button>
         
         <div className="w-px h-6 bg-border mx-1" />
         
@@ -158,15 +227,11 @@ export default function Whiteboard() {
       {/* Whiteboard Canvas */}
       <div
         ref={whiteboardRef}
-        className={`w-full h-full relative ${tool === "pan" ? "cursor-grab" : "cursor-default"} ${isPanning ? "cursor-grabbing" : ""}`}
+        className={`w-full h-full relative ${tool === "pan" ? "cursor-grab" : tool === "connect" ? "cursor-crosshair" : "cursor-default"} ${isPanning ? "cursor-grabbing" : ""}`}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
-        style={{
-          transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-          transformOrigin: "0 0",
-        }}
       >
         {/* Grid Background */}
         <div 
@@ -176,22 +241,30 @@ export default function Whiteboard() {
               radial-gradient(circle, hsl(var(--muted-foreground)) 1px, transparent 1px)
             `,
             backgroundSize: "20px 20px",
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "0 0",
           }}
         />
 
+        {/* Connection Canvas */}
+        <ConnectionCanvas
+          connections={connections}
+          onConnectionUpdate={setConnections}
+          containerRef={whiteboardRef}
+          zoom={zoom}
+          pan={pan}
+        />
+
         {/* Cards */}
-        {cards.map((card) => (
-          <div
-            key={card.id}
-            style={{
-              position: "absolute",
-              left: card.position.x,
-              top: card.position.y,
-              transform: `scale(${1/zoom})`,
-              transformOrigin: "0 0",
-            }}
-          >
+        <div
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "0 0",
+          }}
+        >
+          {cards.map((card) => (
             <KnowledgeCard
+              key={card.id}
               id={card.id}
               title={card.title}
               content={card.content}
@@ -201,10 +274,13 @@ export default function Whiteboard() {
               onPositionChange={updateCardPosition}
               onDelete={deleteCard}
               onUpdate={updateCard}
+              onStartConnection={handleStartConnection}
+              onEndConnection={handleEndConnection}
               disabled={tool === "pan"}
+              scale={1}
             />
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );

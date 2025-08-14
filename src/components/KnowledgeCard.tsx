@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,6 +11,7 @@ import {
   Link2,
   Save,
   X,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -34,7 +35,10 @@ interface KnowledgeCardProps {
   onPositionChange: (id: string, position: Position) => void;
   onDelete: (id: string) => void;
   onUpdate: (id: string, updates: any) => void;
+  onStartConnection: (cardId: string, position: Position) => void;
+  onEndConnection: (cardId: string, position: Position) => void;
   disabled?: boolean;
+  scale?: number;
 }
 
 export default function KnowledgeCard({
@@ -47,7 +51,10 @@ export default function KnowledgeCard({
   onPositionChange,
   onDelete,
   onUpdate,
+  onStartConnection,
+  onEndConnection,
   disabled = false,
+  scale = 1,
 }: KnowledgeCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
@@ -61,18 +68,28 @@ export default function KnowledgeCard({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled || isEditing) return;
     
+    // Prevent drag if clicking on buttons or inputs
+    const target = e.target as HTMLElement;
+    if (target.closest('button') || target.closest('input') || target.closest('textarea')) {
+      return;
+    }
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: e.clientX - position.x,
+        y: e.clientY - position.y,
       });
       setIsDragging(true);
     }
-  }, [disabled, isEditing]);
+  }, [disabled, isEditing, position]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging && !disabled) {
+      e.preventDefault();
       const newPosition = {
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y,
@@ -86,17 +103,17 @@ export default function KnowledgeCard({
   }, []);
 
   // Add global mouse event listeners for dragging
-  useState(() => {
+  useEffect(() => {
     if (isDragging) {
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
+      
+      return () => {
+        document.removeEventListener("mousemove", handleMouseMove);
+        document.removeEventListener("mouseup", handleMouseUp);
+      };
     }
-    
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-  });
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   const handleSave = () => {
     onUpdate(id, {
@@ -114,6 +131,26 @@ export default function KnowledgeCard({
     setIsEditing(false);
   };
 
+  const handleStartConnection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (rect) {
+      const centerX = position.x + rect.width / 2;
+      const centerY = position.y + rect.height / 2;
+      onStartConnection(id, { x: centerX, y: centerY });
+    }
+  };
+
+  const handleEndConnection = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = cardRef.current?.getBoundingClientRect();
+    if (rect) {
+      const centerX = position.x + rect.width / 2;
+      const centerY = position.y + rect.height / 2;
+      onEndConnection(id, { x: centerX, y: centerY });
+    }
+  };
+
   const colorClasses = {
     "accent-purple": "border-accent-purple/30 bg-gradient-to-br from-accent-purple/5 to-accent-purple/10",
     "accent-blue": "border-accent-blue/30 bg-gradient-to-br from-accent-blue/5 to-accent-blue/10",
@@ -125,11 +162,17 @@ export default function KnowledgeCard({
     <div
       ref={cardRef}
       className={`
-        w-80 bg-card-bg border-2 rounded-lg shadow-soft hover:shadow-medium transition-all duration-200
+        absolute w-80 bg-card-bg border-2 rounded-lg shadow-soft hover:shadow-medium transition-all duration-200 select-none
         ${colorClasses[color as keyof typeof colorClasses] || colorClasses["accent-purple"]}
-        ${isDragging ? "cursor-grabbing shadow-large scale-105" : !disabled ? "cursor-grab" : "cursor-default"}
+        ${isDragging ? "cursor-grabbing shadow-large scale-105 z-50" : !disabled ? "cursor-grab" : "cursor-default"}
         ${disabled ? "opacity-50" : ""}
       `}
+      style={{
+        left: position.x,
+        top: position.y,
+        transform: `scale(${scale})`,
+        transformOrigin: "0 0",
+      }}
       onMouseDown={handleMouseDown}
     >
       {/* Header */}
@@ -158,6 +201,10 @@ export default function KnowledgeCard({
               <DropdownMenuItem onClick={() => setIsEditing(true)}>
                 <Edit3 className="h-4 w-4 mr-2" />
                 Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleStartConnection}>
+                <Plus className="h-4 w-4 mr-2" />
+                Start Connection
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onDelete(id)} className="text-destructive">
                 <Trash2 className="h-4 w-4 mr-2" />
@@ -221,11 +268,27 @@ export default function KnowledgeCard({
         )}
       </div>
 
-      {/* Connection indicator */}
-      <div className="absolute -right-1 top-1/2 transform -translate-y-1/2">
-        <div className="w-2 h-2 bg-connection-line rounded-full opacity-60 hover:opacity-100 cursor-pointer">
-          <Link2 className="h-3 w-3 text-connection-line -ml-0.5 -mt-0.5" />
-        </div>
+      {/* Connection points */}
+      <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-4 h-4 p-0 bg-connection-line hover:bg-accent-purple rounded-full opacity-60 hover:opacity-100"
+          onClick={handleStartConnection}
+        >
+          <Plus className="h-2 w-2 text-white" />
+        </Button>
+      </div>
+      
+      <div className="absolute -left-2 top-1/2 transform -translate-y-1/2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-4 h-4 p-0 bg-connection-line hover:bg-accent-green rounded-full opacity-60 hover:opacity-100"
+          onClick={handleEndConnection}
+        >
+          <Link2 className="h-2 w-2 text-white" />
+        </Button>
       </div>
     </div>
   );
