@@ -287,7 +287,7 @@ export default function Whiteboard() {
   console.log("Current drawing elements:", drawingElements);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full">
       <AdvancedToolbar
         tool={currentTool}
         onToolChange={setCurrentTool}
