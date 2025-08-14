@@ -28,7 +28,7 @@ export default function InfiniteCanvas({
 
   // Smooth zoom with mouse wheel
   const handleWheel = useCallback((e: WheelEvent) => {
-    if (!containerRef.current || !pan || typeof pan.x === 'undefined' || typeof pan.y === 'undefined') return;
+    if (!containerRef.current) return;
     
     e.preventDefault();
     
@@ -67,7 +67,7 @@ export default function InfiniteCanvas({
   }, [tool]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!isDragging || !pan || typeof pan.x === 'undefined' || typeof pan.y === 'undefined') return;
+    if (!isDragging) return;
     
     const deltaX = e.clientX - lastMousePos.x;
     const deltaY = e.clientY - lastMousePos.y;
@@ -88,7 +88,7 @@ export default function InfiniteCanvas({
     setIsDragging(false);
     
     // Apply momentum
-    if ((Math.abs(velocity.x) > 1 || Math.abs(velocity.y) > 1) && pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
+    if (Math.abs(velocity.x) > 1 || Math.abs(velocity.y) > 1) {
       let currentVelocity = { ...velocity };
       const friction = 0.92;
       
@@ -97,12 +97,10 @@ export default function InfiniteCanvas({
         currentVelocity.y *= friction;
         
         if (Math.abs(currentVelocity.x) > 0.1 || Math.abs(currentVelocity.y) > 0.1) {
-          if (pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
-            onPanChange({ 
-              x: pan.x + currentVelocity.x, 
-              y: pan.y + currentVelocity.y 
-            });
-          }
+          onPanChange({ 
+            x: pan.x + currentVelocity.x, 
+            y: pan.y + currentVelocity.y 
+          });
           animationRef.current = requestAnimationFrame(animate);
         }
       };
@@ -121,28 +119,20 @@ export default function InfiniteCanvas({
       
       switch (e.key) {
         case 'ArrowLeft':
-          if (pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
-            e.preventDefault();
-            onPanChange({ x: pan.x + step, y: pan.y });
-          }
+          e.preventDefault();
+          onPanChange({ x: pan.x + step, y: pan.y });
           break;
         case 'ArrowRight':
-          if (pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
-            e.preventDefault();
-            onPanChange({ x: pan.x - step, y: pan.y });
-          }
+          e.preventDefault();
+          onPanChange({ x: pan.x - step, y: pan.y });
           break;
         case 'ArrowUp':
-          if (pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
-            e.preventDefault();
-            onPanChange({ x: pan.x, y: pan.y + step });
-          }
+          e.preventDefault();
+          onPanChange({ x: pan.x, y: pan.y + step });
           break;
         case 'ArrowDown':
-          if (pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
-            e.preventDefault();
-            onPanChange({ x: pan.x, y: pan.y - step });
-          }
+          e.preventDefault();
+          onPanChange({ x: pan.x, y: pan.y - step });
           break;
         case '=':
         case '+':
@@ -187,8 +177,6 @@ export default function InfiniteCanvas({
     if (!isDragging) return;
     
     const handleGlobalMouseMove = (e: MouseEvent) => {
-      if (!pan || typeof pan.x === 'undefined' || typeof pan.y === 'undefined') return;
-      
       const deltaX = e.clientX - lastMousePos.x;
       const deltaY = e.clientY - lastMousePos.y;
       
@@ -206,7 +194,7 @@ export default function InfiniteCanvas({
       setIsDragging(false);
       
       // Apply momentum
-      if ((Math.abs(velocity.x) > 1 || Math.abs(velocity.y) > 1) && pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
+      if (Math.abs(velocity.x) > 1 || Math.abs(velocity.y) > 1) {
         let currentVelocity = { ...velocity };
         const friction = 0.92;
         
@@ -215,12 +203,10 @@ export default function InfiniteCanvas({
           currentVelocity.y *= friction;
           
           if (Math.abs(currentVelocity.x) > 0.1 || Math.abs(currentVelocity.y) > 0.1) {
-            if (pan && typeof pan.x === 'number' && typeof pan.y === 'number') {
-              onPanChange({ 
-                x: pan.x + currentVelocity.x, 
-                y: pan.y + currentVelocity.y 
-              });
-            }
+            onPanChange({ 
+              x: pan.x + currentVelocity.x, 
+              y: pan.y + currentVelocity.y 
+            });
             animationRef.current = requestAnimationFrame(animate);
           }
         };
@@ -260,7 +246,7 @@ export default function InfiniteCanvas({
     >
       <div
         style={{
-          transform: `scale(${zoom}) translate(${pan?.x || 0}px, ${pan?.y || 0}px)`,
+          transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
           transformOrigin: "0 0",
           transition: isDragging ? 'none' : 'transform 0.2s ease-out'
         }}
