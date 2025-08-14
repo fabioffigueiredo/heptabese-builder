@@ -1,32 +1,24 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import KnowledgeCard from "./KnowledgeCard";
-import ConnectionCanvas from "./ConnectionCanvas";
+import EnhancedConnectionCanvas from "./Connections/EnhancedConnectionCanvas";
+import FabricCanvasComponent from "./Canvas/FabricCanvas";
+import AdvancedToolbar from "./Toolbar/AdvancedToolbar";
+import MediaUploader from "./Media/MediaUploader";
+import MediaElement from "./Elements/MediaElement";
 import { Plus, ZoomIn, ZoomOut, Move, Hand, Link } from "lucide-react";
 import { toast } from "sonner";
+import { 
+  WhiteboardTool, 
+  ShapeTool, 
+  CardData, 
+  Connection, 
+  ConnectionStyle, 
+  DrawingElement, 
+  Position 
+} from "@/types/whiteboard";
 
-interface Position {
-  x: number;
-  y: number;
-}
-
-interface Connection {
-  id: string;
-  fromCardId: string;
-  toCardId: string;
-  fromPosition: { x: number; y: number };
-  toPosition: { x: number; y: number };
-}
-
-interface CardData {
-  id: string;
-  title: string;
-  content: string;
-  position: Position;
-  size?: { width: number; height: number };
-  tags: string[];
-  color: string;
-}
+// Types are now imported from @/types/whiteboard
 
 export default function Whiteboard() {
   const [cards, setCards] = useState<CardData[]>([
@@ -63,9 +55,13 @@ export default function Whiteboard() {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [tool, setTool] = useState<"select" | "pan" | "connect">("select");
+  const [tool, setTool] = useState<WhiteboardTool>("select");
+  const [shapeTool, setShapeTool] = useState<ShapeTool>("rectangle");
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
+  const [drawingElements, setDrawingElements] = useState<DrawingElement[]>([]);
+  const [brushSize, setBrushSize] = useState(2);
+  const [brushColor, setBrushColor] = useState("#000000");
   const whiteboardRef = useRef<HTMLDivElement>(null);
 
   const handleZoomIn = () => {
@@ -217,6 +213,12 @@ export default function Whiteboard() {
     }
   };
 
+  const handleConnect = () => {
+    setTool("connect");
+    setConnectingFrom(null);
+    toast("Connection mode: Click a card to start connecting!");
+  };
+
   const handleEndConnection = (cardId: string, position: Position) => {
     console.log(`Ending connection to card ${cardId} at:`, position);
     if (connectingFrom && connectingFrom !== cardId) {
@@ -227,6 +229,13 @@ export default function Whiteboard() {
         const fromSize = fromCard.size || { width: 320, height: 240 };
         const toSize = toCard.size || { width: 320, height: 240 };
         
+        const defaultStyle: ConnectionStyle = {
+          type: 'bezier',
+          strokeWidth: 2,
+          strokeColor: '#666666',
+          arrowType: 'arrow',
+        };
+
         const newConnection: Connection = {
           id: `${connectingFrom}-${cardId}-${Date.now()}`,
           fromCardId: connectingFrom,
@@ -239,6 +248,7 @@ export default function Whiteboard() {
             x: toCard.position.x,         // left edge of to card
             y: toCard.position.y + toSize.height / 2    // middle of to card
           },
+          style: defaultStyle,
         };
         
         console.log("Creating new connection:", newConnection);
@@ -251,69 +261,43 @@ export default function Whiteboard() {
     }
   };
 
+  // Drawing element handlers
+  const handleElementAdd = (element: DrawingElement) => {
+    setDrawingElements(prev => [...prev, element]);
+  };
+
+  const handleElementUpdate = (id: string, updates: Partial<DrawingElement>) => {
+    setDrawingElements(prev => prev.map(el => 
+      el.id === id ? { ...el, ...updates } : el
+    ));
+  };
+
+  const handleElementDelete = (id: string) => {
+    setDrawingElements(prev => prev.filter(el => el.id !== id));
+  };
+
   console.log("Current cards:", cards);
   console.log("Current connections:", connections);
+  console.log("Current drawing elements:", drawingElements);
 
   return (
     <div className="flex-1 relative overflow-hidden bg-whiteboard">
-      {/* Toolbar */}
-      <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-card-bg/90 backdrop-blur-sm rounded-lg border border-border p-2 shadow-soft">
-        <Button
-          variant={tool === "select" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => {
-            setTool("select");
-            toast("Select tool active");
-          }}
-        >
-          <Move className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={tool === "pan" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => {
-            setTool("pan");
-            toast("Pan tool active - drag to move around");
-          }}
-        >
-          <Hand className="h-4 w-4" />
-        </Button>
-        
-        <div className="w-px h-6 bg-border mx-1" />
-        
-        <Button variant="ghost" size="sm" onClick={handleZoomOut}>
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <span className="text-sm text-muted-foreground min-w-[3rem] text-center">
-          {Math.round(zoom * 100)}%
-        </span>
-        <Button variant="ghost" size="sm" onClick={handleZoomIn}>
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={tool === "connect" ? "default" : "ghost"}
-          size="sm"
-          onClick={() => {
-            setTool("connect");
-            setConnectingFrom(null);
-            toast("Connection mode: Click a card to start connecting!");
-          }}
-        >
-          <Link className="h-4 w-4" />
-        </Button>
-        
-        <div className="w-px h-6 bg-border mx-1" />
-        
-        <Button 
-          variant="default" 
-          size="sm" 
-          onClick={addNewCard}
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Plus className="h-4 w-4" />
-          Add Card
-        </Button>
-      </div>
+      {/* Advanced Toolbar */}
+      <AdvancedToolbar
+        tool={tool}
+        shapeTool={shapeTool}
+        zoom={zoom}
+        brushSize={brushSize}
+        brushColor={brushColor}
+        onToolChange={setTool}
+        onShapeToolChange={setShapeTool}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onBrushSizeChange={setBrushSize}
+        onBrushColorChange={setBrushColor}
+        onAddCard={addNewCard}
+        onConnect={handleConnect}
+      />
 
       {/* Whiteboard Canvas */}
       <div
@@ -337,13 +321,26 @@ export default function Whiteboard() {
           }}
         />
 
-        {/* Connection Canvas */}
-        <ConnectionCanvas
+        {/* Enhanced Connection Canvas */}
+        <EnhancedConnectionCanvas
           connections={connections}
           onConnectionUpdate={setConnections}
           containerRef={whiteboardRef}
           zoom={zoom}
           pan={pan}
+        />
+
+        {/* Fabric.js Drawing Canvas */}
+        <FabricCanvasComponent
+          tool={tool}
+          shapeTool={shapeTool}
+          brushSize={brushSize}
+          brushColor={brushColor}
+          zoom={zoom}
+          pan={pan}
+          onElementAdd={handleElementAdd}
+          onElementUpdate={handleElementUpdate}
+          onElementDelete={handleElementDelete}
         />
 
         {/* Cards */}
@@ -374,6 +371,34 @@ export default function Whiteboard() {
             />
           ))}
         </div>
+
+        {/* Drawing Elements */}
+        <div
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "0 0",
+          }}
+        >
+          {drawingElements.map((element) => (
+            <MediaElement
+              key={element.id}
+              element={element}
+              onUpdate={handleElementUpdate}
+              onDelete={handleElementDelete}
+              scale={1}
+            />
+          ))}
+        </div>
+
+        {/* Media Uploader (positioned for click-to-add) */}
+        {(tool === "image" || tool === "video" || tool === "pdf" || tool === "link") && (
+          <div className="absolute top-20 left-4 z-10">
+            <MediaUploader
+              onMediaAdd={handleElementAdd}
+              position={{ x: 100, y: 100 }}
+            />
+          </div>
+        )}
       </div>
     </div>
   );
