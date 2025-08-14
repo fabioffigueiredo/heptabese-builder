@@ -61,7 +61,26 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
-				}
+				},
+				// Heptabase-specific colors
+				whiteboard: 'hsl(var(--whiteboard))',
+				'card-bg': 'hsl(var(--card-bg))',
+				'card-shadow': 'hsl(var(--card-shadow))',
+				'connection-line': 'hsl(var(--connection-line))',
+				'sidebar-bg': 'hsl(var(--sidebar-bg))',
+				'accent-purple': 'hsl(var(--accent-purple))',
+				'accent-blue': 'hsl(var(--accent-blue))',
+				'accent-green': 'hsl(var(--accent-green))',
+				'accent-orange': 'hsl(var(--accent-orange))'
+			},
+			backgroundImage: {
+				'gradient-primary': 'var(--gradient-primary)',
+				'gradient-subtle': 'var(--gradient-subtle)'
+			},
+			boxShadow: {
+				'soft': 'var(--shadow-soft)',
+				'medium': 'var(--shadow-medium)',
+				'large': 'var(--shadow-large)'
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
