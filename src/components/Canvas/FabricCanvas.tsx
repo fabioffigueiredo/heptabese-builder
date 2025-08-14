@@ -36,8 +36,8 @@ export default function FabricCanvasComponent({
     if (!canvasRef.current) return;
 
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: Math.max(window.innerWidth, 5000),
+      height: Math.max(window.innerHeight, 5000),
       backgroundColor: "transparent",
       selection: tool === "select",
     });
@@ -56,8 +56,8 @@ export default function FabricCanvasComponent({
 
     const handleResize = () => {
       canvas.setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: Math.max(window.innerWidth, 5000),
+        height: Math.max(window.innerHeight, 5000),
       });
     };
 
