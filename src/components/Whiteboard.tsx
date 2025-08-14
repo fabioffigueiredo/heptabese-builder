@@ -1,4 +1,3 @@
-
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import KnowledgeCard from "./KnowledgeCard";
@@ -106,15 +105,27 @@ export default function Whiteboard() {
       card.id === id ? { ...card, position: newPosition } : card
     ));
     
-    // Update connections when card moves
+    // Update connections when card moves - using precise positioning
     setConnections(prev => prev.map(conn => {
+      const updatedConn = { ...conn };
+      
       if (conn.fromCardId === id) {
-        return { ...conn, fromPosition: { x: newPosition.x + 160, y: newPosition.y + 100 } };
+        // Right edge connection point for "from" card
+        updatedConn.fromPosition = { 
+          x: newPosition.x + 320, // card width
+          y: newPosition.y + 120   // approximately middle of card (card height ~240px)
+        };
       }
+      
       if (conn.toCardId === id) {
-        return { ...conn, toPosition: { x: newPosition.x + 160, y: newPosition.y + 100 } };
+        // Left edge connection point for "to" card
+        updatedConn.toPosition = { 
+          x: newPosition.x, 
+          y: newPosition.y + 120 // approximately middle of card
+        };
       }
-      return conn;
+      
+      return updatedConn;
     }));
   };
 
@@ -163,6 +174,7 @@ export default function Whiteboard() {
   };
 
   const handleStartConnection = (cardId: string, position: Position) => {
+    console.log(`Starting connection from card ${cardId} at:`, position);
     if (tool === "connect" || !connectingFrom) {
       setConnectingFrom(cardId);
       setTool("connect");
@@ -171,6 +183,7 @@ export default function Whiteboard() {
   };
 
   const handleEndConnection = (cardId: string, position: Position) => {
+    console.log(`Ending connection to card ${cardId} at:`, position);
     if (connectingFrom && connectingFrom !== cardId) {
       const fromCard = cards.find(card => card.id === connectingFrom);
       const toCard = cards.find(card => card.id === cardId);
@@ -180,10 +193,17 @@ export default function Whiteboard() {
           id: `${connectingFrom}-${cardId}-${Date.now()}`,
           fromCardId: connectingFrom,
           toCardId: cardId,
-          fromPosition: { x: fromCard.position.x + 160, y: fromCard.position.y + 100 },
-          toPosition: { x: toCard.position.x + 160, y: toCard.position.y + 100 },
+          fromPosition: { 
+            x: fromCard.position.x + 320, // right edge of from card
+            y: fromCard.position.y + 120  // middle of from card
+          },
+          toPosition: { 
+            x: toCard.position.x,         // left edge of to card
+            y: toCard.position.y + 120    // middle of to card
+          },
         };
         
+        console.log("Creating new connection:", newConnection);
         setConnections(prev => [...prev, newConnection]);
         toast("Cards connected successfully!");
       }

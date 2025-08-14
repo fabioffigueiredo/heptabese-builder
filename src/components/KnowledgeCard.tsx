@@ -135,9 +135,11 @@ export default function KnowledgeCard({
     e.stopPropagation();
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
-      const centerX = position.x + rect.width / 2;
-      const centerY = position.y + rect.height / 2;
-      onStartConnection(id, { x: centerX, y: centerY });
+      // Calculate the exact position of the right connection point
+      const connectionX = position.x + 320; // card width (320px) to get right edge
+      const connectionY = position.y + rect.height / 2; // middle of card height
+      console.log(`Start connection from card ${id} at position:`, { x: connectionX, y: connectionY });
+      onStartConnection(id, { x: connectionX, y: connectionY });
     }
   };
 
@@ -145,9 +147,11 @@ export default function KnowledgeCard({
     e.stopPropagation();
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
-      const centerX = position.x + rect.width / 2;
-      const centerY = position.y + rect.height / 2;
-      onEndConnection(id, { x: centerX, y: centerY });
+      // Calculate the exact position of the left connection point
+      const connectionX = position.x; // left edge of card
+      const connectionY = position.y + rect.height / 2; // middle of card height
+      console.log(`End connection to card ${id} at position:`, { x: connectionX, y: connectionY });
+      onEndConnection(id, { x: connectionX, y: connectionY });
     }
   };
 
@@ -268,7 +272,7 @@ export default function KnowledgeCard({
         )}
       </div>
 
-      {/* Connection points */}
+      {/* Connection points - positioned precisely at the edges */}
       <div className="absolute -right-2 top-1/2 transform -translate-y-1/2">
         <Button
           variant="ghost"
