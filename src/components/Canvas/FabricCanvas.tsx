@@ -276,13 +276,15 @@ export default function FabricCanvasComponent({
   }, [fabricCanvas, handleMouseDown, onElementAdd, brushSize, brushColor, tool]);
 
   return (
-    <div className="absolute inset-0 pointer-events-auto">
+    <div 
+      className="absolute inset-0 z-10"
+      style={{
+        pointerEvents: tool === 'pan' ? 'none' : 'auto',
+      }}
+    >
       <canvas 
         ref={canvasRef} 
-        className="absolute inset-0"
-        style={{
-          pointerEvents: tool === 'pan' ? 'none' : 'auto',
-        }}
+        className="absolute inset-0 w-full h-full"
       />
     </div>
   );

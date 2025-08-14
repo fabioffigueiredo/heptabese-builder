@@ -242,7 +242,7 @@ export default function KnowledgeCard({
       className={`
         absolute bg-card-bg border-2 rounded-lg shadow-soft hover:shadow-medium transition-all duration-200 select-none
         ${colorClasses[color as keyof typeof colorClasses] || colorClasses["accent-purple"]}
-        ${isDragging ? "cursor-grabbing shadow-large scale-105 z-50" : isResizing ? "z-50" : !disabled ? "cursor-grab" : "cursor-default"}
+        ${isDragging ? "cursor-grabbing shadow-large scale-105 z-50" : isResizing ? "z-50" : !disabled ? "cursor-grab z-30" : "cursor-default z-30"}
         ${disabled ? "opacity-50" : ""}
       `}
       style={{

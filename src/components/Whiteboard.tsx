@@ -345,6 +345,7 @@ export default function Whiteboard() {
 
         {/* Cards */}
         <div
+          className="relative z-20"
           style={{
             transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
             transformOrigin: "0 0",
@@ -374,6 +375,7 @@ export default function Whiteboard() {
 
         {/* Drawing Elements */}
         <div
+          className="relative z-15"
           style={{
             transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
             transformOrigin: "0 0",
