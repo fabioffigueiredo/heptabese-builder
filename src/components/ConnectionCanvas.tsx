@@ -1,5 +1,5 @@
+
 import { useEffect, useRef, useState } from "react";
-import { Canvas as FabricCanvas, Path } from "fabric";
 
 interface Connection {
   id: string;
@@ -7,11 +7,6 @@ interface Connection {
   toCardId: string;
   fromPosition: { x: number; y: number };
   toPosition: { x: number; y: number };
-}
-
-interface Position {
-  x: number;
-  y: number;
 }
 
 interface ConnectionCanvasProps {
@@ -30,91 +25,71 @@ export default function ConnectionCanvas({
   pan 
 }: ConnectionCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fabricCanvas, setFabricCanvas] = useState<FabricCanvas | null>(null);
+  const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
   useEffect(() => {
     if (!canvasRef.current || !containerRef.current) return;
 
-    const containerRect = containerRef.current.getBoundingClientRect();
-    
-    const canvas = new FabricCanvas(canvasRef.current, {
-      width: containerRect.width,
-      height: containerRect.height,
-      backgroundColor: "transparent",
-      selection: false,
-      hoverCursor: "default",
-      moveCursor: "default",
-    });
-
-    canvas.defaultCursor = "default";
-    
-    setFabricCanvas(canvas);
-
-    const handleResize = () => {
-      if (containerRef.current) {
+    const updateCanvasSize = () => {
+      if (containerRef.current && canvasRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        canvas.setDimensions({ width: rect.width, height: rect.height });
-        canvas.renderAll();
+        setCanvasSize({ width: rect.width, height: rect.height });
+        canvasRef.current.width = rect.width;
+        canvasRef.current.height = rect.height;
       }
     };
 
-    window.addEventListener("resize", handleResize);
+    updateCanvasSize();
+    window.addEventListener("resize", updateCanvasSize);
 
     return () => {
-      window.removeEventListener("resize", handleResize);
-      canvas.dispose();
+      window.removeEventListener("resize", updateCanvasSize);
     };
   }, [containerRef]);
 
-  // Update canvas transform based on zoom and pan
+  // Draw connections using HTML5 Canvas
   useEffect(() => {
-    if (!fabricCanvas) return;
+    if (!canvasRef.current) return;
 
-    const transform = `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`;
-    fabricCanvas.getElement().style.transform = transform;
-    fabricCanvas.getElement().style.transformOrigin = "0 0";
-  }, [fabricCanvas, zoom, pan]);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-  // Render connections
-  useEffect(() => {
-    if (!fabricCanvas) return;
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    fabricCanvas.clear();
+    // Apply zoom and pan transformations
+    ctx.save();
+    ctx.scale(zoom, zoom);
+    ctx.translate(pan.x, pan.y);
 
     connections.forEach((connection) => {
-      // Calculate arrow points
       const fromX = connection.fromPosition.x;
       const fromY = connection.fromPosition.y;
       const toX = connection.toPosition.x;
       const toY = connection.toPosition.y;
 
-      // Create curved line
+      // Calculate control points for bezier curve
       const deltaX = toX - fromX;
       const deltaY = toY - fromY;
       const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      
-      // Control points for bezier curve
       const controlOffset = Math.min(distance * 0.3, 100);
+
       const control1X = fromX + controlOffset;
       const control1Y = fromY;
       const control2X = toX - controlOffset;
       const control2Y = toY;
 
-      // Create SVG path for curved line
-      const pathString = `M ${fromX} ${fromY} C ${control1X} ${control1Y}, ${control2X} ${control2Y}, ${toX} ${toY}`;
-      
-      const line = new Path(pathString, {
-        stroke: "hsl(262 40% 70%)",
-        strokeWidth: 2,
-        fill: "",
-        selectable: false,
-        evented: false,
-        strokeDashArray: [5, 5],
-      });
+      // Draw curved line
+      ctx.beginPath();
+      ctx.moveTo(fromX, fromY);
+      ctx.bezierCurveTo(control1X, control1Y, control2X, control2Y, toX, toY);
+      ctx.strokeStyle = "hsl(262 40% 70%)";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([5, 5]);
+      ctx.stroke();
 
-      fabricCanvas.add(line);
-
-      // Add arrowhead
+      // Draw arrowhead
       const angle = Math.atan2(deltaY, deltaX);
       const arrowLength = 12;
       const arrowAngle = Math.PI / 6;
@@ -124,27 +99,28 @@ export default function ConnectionCanvas({
       const arrowPoint2X = toX - arrowLength * Math.cos(angle + arrowAngle);
       const arrowPoint2Y = toY - arrowLength * Math.sin(angle + arrowAngle);
 
-      const arrowPath = `M ${toX} ${toY} L ${arrowPoint1X} ${arrowPoint1Y} M ${toX} ${toY} L ${arrowPoint2X} ${arrowPoint2Y}`;
-      
-      const arrow = new Path(arrowPath, {
-        stroke: "hsl(262 40% 70%)",
-        strokeWidth: 2,
-        fill: "",
-        selectable: false,
-        evented: false,
-      });
-
-      fabricCanvas.add(arrow);
+      ctx.beginPath();
+      ctx.setLineDash([]);
+      ctx.moveTo(toX, toY);
+      ctx.lineTo(arrowPoint1X, arrowPoint1Y);
+      ctx.moveTo(toX, toY);
+      ctx.lineTo(arrowPoint2X, arrowPoint2Y);
+      ctx.strokeStyle = "hsl(262 40% 70%)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     });
 
-    fabricCanvas.renderAll();
-  }, [fabricCanvas, connections]);
+    ctx.restore();
+  }, [connections, zoom, pan, canvasSize]);
 
   return (
     <canvas
       ref={canvasRef}
       className="absolute inset-0 pointer-events-none z-10"
-      style={{ mixBlendMode: "multiply" }}
+      style={{ 
+        width: canvasSize.width,
+        height: canvasSize.height,
+      }}
     />
   );
 }

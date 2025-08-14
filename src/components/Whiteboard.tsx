@@ -1,3 +1,4 @@
+
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import KnowledgeCard from "./KnowledgeCard";
@@ -66,10 +67,12 @@ export default function Whiteboard() {
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev * 1.2, 3));
+    toast("Zoom in");
   };
 
   const handleZoomOut = () => {
     setZoom(prev => Math.max(prev / 1.2, 0.3));
+    toast("Zoom out");
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -98,6 +101,7 @@ export default function Whiteboard() {
   }, []);
 
   const updateCardPosition = (id: string, newPosition: Position) => {
+    console.log(`Updating card ${id} position to:`, newPosition);
     setCards(prev => prev.map(card => 
       card.id === id ? { ...card, position: newPosition } : card
     ));
@@ -115,32 +119,47 @@ export default function Whiteboard() {
   };
 
   const addNewCard = () => {
+    console.log("Adding new card...");
+    const colors = ["accent-purple", "accent-blue", "accent-green", "accent-orange"];
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    
     const newCard: CardData = {
-      id: Date.now().toString(),
-      title: "New Card",
-      content: "Start writing your thoughts here...",
+      id: `card-${Date.now()}`,
+      title: "New Idea",
+      content: "Click to edit this card and start writing your thoughts...",
       position: { 
-        x: Math.random() * 400 + 200, 
-        y: Math.random() * 300 + 150 
+        x: Math.random() * 300 + 150, 
+        y: Math.random() * 200 + 150 
       },
       tags: [],
-      color: "accent-purple",
+      color: randomColor,
     };
-    setCards(prev => [...prev, newCard]);
+    
+    setCards(prev => {
+      const updated = [...prev, newCard];
+      console.log("Cards updated:", updated);
+      return updated;
+    });
+    
+    toast("New card added! Click to edit it.");
   };
 
   const deleteCard = (id: string) => {
+    console.log(`Deleting card ${id}`);
     setCards(prev => prev.filter(card => card.id !== id));
     // Remove connections related to deleted card
     setConnections(prev => prev.filter(conn => 
       conn.fromCardId !== id && conn.toCardId !== id
     ));
+    toast("Card deleted");
   };
 
   const updateCard = (id: string, updates: Partial<CardData>) => {
+    console.log(`Updating card ${id}:`, updates);
     setCards(prev => prev.map(card => 
       card.id === id ? { ...card, ...updates } : card
     ));
+    toast("Card updated");
   };
 
   const handleStartConnection = (cardId: string, position: Position) => {
@@ -174,6 +193,9 @@ export default function Whiteboard() {
     }
   };
 
+  console.log("Current cards:", cards);
+  console.log("Current connections:", connections);
+
   return (
     <div className="flex-1 relative overflow-hidden bg-whiteboard">
       {/* Toolbar */}
@@ -181,14 +203,20 @@ export default function Whiteboard() {
         <Button
           variant={tool === "select" ? "default" : "ghost"}
           size="sm"
-          onClick={() => setTool("select")}
+          onClick={() => {
+            setTool("select");
+            toast("Select tool active");
+          }}
         >
           <Move className="h-4 w-4" />
         </Button>
         <Button
           variant={tool === "pan" ? "default" : "ghost"}
           size="sm"
-          onClick={() => setTool("pan")}
+          onClick={() => {
+            setTool("pan");
+            toast("Pan tool active - drag to move around");
+          }}
         >
           <Hand className="h-4 w-4" />
         </Button>
@@ -218,7 +246,12 @@ export default function Whiteboard() {
         
         <div className="w-px h-6 bg-border mx-1" />
         
-        <Button variant="default" size="sm" onClick={addNewCard}>
+        <Button 
+          variant="default" 
+          size="sm" 
+          onClick={addNewCard}
+          className="bg-primary hover:bg-primary/90"
+        >
           <Plus className="h-4 w-4" />
           Add Card
         </Button>
