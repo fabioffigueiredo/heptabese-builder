@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import KnowledgeCard from "./KnowledgeCard";
 import EnhancedConnectionCanvas from "./Connections/EnhancedConnectionCanvas";
@@ -20,8 +20,15 @@ import {
 
 // Types are now imported from @/types/whiteboard
 
-export default function Whiteboard() {
-  const [cards, setCards] = useState<CardData[]>([
+interface WhiteboardProps {
+  onNewCard?: () => void;
+  cards?: CardData[];
+  onCardsChange?: (cards: CardData[]) => void;
+}
+
+export default function Whiteboard({ onNewCard, cards: externalCards, onCardsChange }: WhiteboardProps) {
+  // Use external cards if provided, otherwise use default internal cards
+  const defaultCards: CardData[] = [
     {
       id: "1",
       title: "Deep Learning Fundamentals",
@@ -49,19 +56,54 @@ export default function Whiteboard() {
       tags: ["design", "ui-ux"],
       color: "accent-green",
     },
-  ]);
+  ];
+  
+  const [cards, setCards] = useState<CardData[]>(externalCards || defaultCards);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  
+  // Sync with external cards when they change
+  useEffect(() => {
+    if (externalCards) {
+      setCards(externalCards);
+    }
+  }, [externalCards]);
+
+  // Handle keyboard events for deleting selected cards
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedCardId) {
+        event.preventDefault();
+        deleteCard(selectedCardId);
+        setSelectedCardId(null);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedCardId]);
 
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  
+  // Virtual canvas bounds for infinite scrolling
+  const VIRTUAL_BOUNDS = {
+    minX: -50000,
+    maxX: 50000,
+    minY: -50000,
+    maxY: 50000,
+  };
   const [tool, setTool] = useState<WhiteboardTool>("select");
   const [shapeTool, setShapeTool] = useState<ShapeTool>("rectangle");
   const [isPanning, setIsPanning] = useState(false);
   const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [drawingElements, setDrawingElements] = useState<DrawingElement[]>([]);
-  const [brushSize, setBrushSize] = useState(2);
+  const [brushSize, setBrushSize] = useState(5);
   const [brushColor, setBrushColor] = useState("#000000");
+  const [highlightColor, setHighlightColor] = useState("#ffff00");
   const whiteboardRef = useRef<HTMLDivElement>(null);
 
   const handleZoomIn = () => {
@@ -73,6 +115,23 @@ export default function Whiteboard() {
     setZoom(prev => Math.max(prev / 1.2, 0.3));
     toast("Zoom out");
   };
+
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    
+    if (e.ctrlKey || e.metaKey) {
+      // Zoom with Ctrl/Cmd + scroll
+      const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+      setZoom(prev => Math.min(Math.max(prev * zoomFactor, 0.1), 5));
+    } else {
+      // Pan with scroll - with virtual bounds
+      setPan(prev => {
+        const newX = Math.max(VIRTUAL_BOUNDS.minX, Math.min(VIRTUAL_BOUNDS.maxX, prev.x - e.deltaX));
+        const newY = Math.max(VIRTUAL_BOUNDS.minY, Math.min(VIRTUAL_BOUNDS.maxY, prev.y - e.deltaY));
+        return { x: newX, y: newY };
+      });
+    }
+  }, []);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (tool === "pan") {
@@ -86,10 +145,11 @@ export default function Whiteboard() {
       const deltaX = e.clientX - lastPanPoint.x;
       const deltaY = e.clientY - lastPanPoint.y;
       
-      setPan(prev => ({
-        x: prev.x + deltaX,
-        y: prev.y + deltaY,
-      }));
+      setPan(prev => {
+        const newX = Math.max(VIRTUAL_BOUNDS.minX, Math.min(VIRTUAL_BOUNDS.maxX, prev.x + deltaX));
+        const newY = Math.max(VIRTUAL_BOUNDS.minY, Math.min(VIRTUAL_BOUNDS.maxY, prev.y + deltaY));
+        return { x: newX, y: newY };
+      });
       
       setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
@@ -165,13 +225,17 @@ export default function Whiteboard() {
     const colors = ["accent-purple", "accent-blue", "accent-green", "accent-orange"];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
     
+    // Calculate position relative to current viewport
+    const viewportCenterX = (-pan.x / zoom) + (window.innerWidth / 2 / zoom);
+    const viewportCenterY = (-pan.y / zoom) + (window.innerHeight / 2 / zoom);
+    
     const newCard: CardData = {
       id: `card-${Date.now()}`,
       title: "New Idea",
       content: "Click to edit this card and start writing your thoughts...",
       position: { 
-        x: Math.random() * 300 + 150, 
-        y: Math.random() * 200 + 150 
+        x: viewportCenterX - 160, // Center the card (320px width / 2)
+        y: viewportCenterY - 120  // Center the card (240px height / 2)
       },
       tags: [],
       color: randomColor,
@@ -180,11 +244,79 @@ export default function Whiteboard() {
     setCards(prev => {
       const updated = [...prev, newCard];
       console.log("Cards updated:", updated);
+      // Notify parent component if callback is provided
+      if (onCardsChange) {
+        onCardsChange(updated);
+      }
       return updated;
     });
     
     toast("New card added! Click to edit it.");
   };
+
+  // Use external onNewCard if provided, otherwise use internal addNewCard
+  const handleAddCard = onNewCard || addNewCard;
+
+  // Center view on content
+  const centerView = () => {
+    if (cards.length === 0) {
+      setPan({ x: 0, y: 0 });
+      setZoom(1);
+      return;
+    }
+
+    // Calculate bounding box of all cards
+    const bounds = cards.reduce(
+      (acc, card) => {
+        const cardRight = card.position.x + (card.size?.width || 320);
+        const cardBottom = card.position.y + (card.size?.height || 240);
+        return {
+          minX: Math.min(acc.minX, card.position.x),
+          minY: Math.min(acc.minY, card.position.y),
+          maxX: Math.max(acc.maxX, cardRight),
+          maxY: Math.max(acc.maxY, cardBottom),
+        };
+      },
+      { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity }
+    );
+
+    const centerX = (bounds.minX + bounds.maxX) / 2;
+    const centerY = (bounds.minY + bounds.maxY) / 2;
+    const viewportCenterX = window.innerWidth / 2;
+    const viewportCenterY = window.innerHeight / 2;
+
+    setPan({
+      x: viewportCenterX - centerX * zoom,
+      y: viewportCenterY - centerY * zoom,
+    });
+  };
+
+  // Auto-center on first load if no cards are visible
+  useEffect(() => {
+    if (cards.length > 0) {
+      const viewportBounds = {
+        left: -pan.x / zoom,
+        top: -pan.y / zoom,
+        right: (-pan.x + window.innerWidth) / zoom,
+        bottom: (-pan.y + window.innerHeight) / zoom,
+      };
+
+      const hasVisibleCards = cards.some(card => {
+        const cardRight = card.position.x + (card.size?.width || 320);
+        const cardBottom = card.position.y + (card.size?.height || 240);
+        return (
+          card.position.x < viewportBounds.right &&
+          cardRight > viewportBounds.left &&
+          card.position.y < viewportBounds.bottom &&
+          cardBottom > viewportBounds.top
+        );
+      });
+
+      if (!hasVisibleCards) {
+        centerView();
+      }
+    }
+  }, [cards.length]);
 
   const deleteCard = (id: string) => {
     console.log(`Deleting card ${id}`);
@@ -264,6 +396,7 @@ export default function Whiteboard() {
   // Drawing element handlers
   const handleElementAdd = (element: DrawingElement) => {
     setDrawingElements(prev => [...prev, element]);
+    toast.success('Elemento de mídia adicionado');
   };
 
   const handleElementUpdate = (id: string, updates: Partial<DrawingElement>) => {
@@ -274,11 +407,10 @@ export default function Whiteboard() {
 
   const handleElementDelete = (id: string) => {
     setDrawingElements(prev => prev.filter(el => el.id !== id));
+    toast.success('Elemento excluído com sucesso');
   };
 
-  console.log("Current cards:", cards);
-  console.log("Current connections:", connections);
-  console.log("Current drawing elements:", drawingElements);
+
 
   return (
     <div className="flex-1 relative overflow-hidden bg-whiteboard">
@@ -289,14 +421,17 @@ export default function Whiteboard() {
         zoom={zoom}
         brushSize={brushSize}
         brushColor={brushColor}
+        highlightColor={highlightColor}
         onToolChange={setTool}
         onShapeToolChange={setShapeTool}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
         onBrushSizeChange={setBrushSize}
         onBrushColorChange={setBrushColor}
-        onAddCard={addNewCard}
+        onHighlightColorChange={setHighlightColor}
+        onAddCard={handleAddCard}
         onConnect={handleConnect}
+        onCenterView={centerView}
       />
 
       {/* Whiteboard Canvas */}
@@ -307,17 +442,31 @@ export default function Whiteboard() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
+        onWheel={handleWheel}
       >
-        {/* Grid Background */}
-        <div 
-          className="absolute inset-0 opacity-30"
+        {/* Infinite Grid Background */}
+        <div
+          className="absolute inset-0 pointer-events-none"
           style={{
             backgroundImage: `
-              radial-gradient(circle, hsl(var(--muted-foreground)) 1px, transparent 1px)
+              linear-gradient(to right, rgba(0,0,0,0.1) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(0,0,0,0.1) 1px, transparent 1px)
+            `,
+            backgroundSize: `${20 * zoom}px ${20 * zoom}px`,
+            backgroundPosition: `${pan.x % (20 * zoom)}px ${pan.y % (20 * zoom)}px`,
+            transform: 'translateZ(0)', // Force GPU acceleration
+          }}
+        />
+
+        {/* Static Grid for reference */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-10"
+          style={{
+            backgroundImage: `
+              linear-gradient(to right, #e5e7eb 1px, transparent 1px),
+              linear-gradient(to bottom, #e5e7eb 1px, transparent 1px)
             `,
             backgroundSize: "20px 20px",
-            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-            transformOrigin: "0 0",
           }}
         />
 
@@ -368,6 +517,10 @@ export default function Whiteboard() {
               onEndConnection={handleEndConnection}
               disabled={tool === "pan"}
               scale={1}
+              isSelected={selectedCardId === card.id}
+              onSelect={setSelectedCardId}
+              currentTool={tool}
+              highlightColor={highlightColor}
             />
           ))}
         </div>
@@ -379,7 +532,7 @@ export default function Whiteboard() {
             transformOrigin: "0 0",
           }}
         >
-          {drawingElements.map((element) => (
+          {drawingElements.filter(element => element.type !== 'drawing').map((element) => (
             <MediaElement
               key={element.id}
               element={element}

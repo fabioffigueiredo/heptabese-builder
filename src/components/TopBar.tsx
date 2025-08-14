@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -54,14 +55,14 @@ export default function TopBar({ sidebarCollapsed, onToggleSidebar }: TopBarProp
         <Breadcrumb>
           <BreadcrumbList>
             <BreadcrumbItem>
-              <BreadcrumbLink href="/" className="text-muted-foreground">
-                Workspace
+              <BreadcrumbLink asChild className="text-muted-foreground">
+                <Link to="/">Workspace</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
             <BreadcrumbItem>
-              <BreadcrumbLink href="/projects" className="text-muted-foreground">
-                Research Project
+              <BreadcrumbLink asChild className="text-muted-foreground">
+                <Link to="/">Research Project</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

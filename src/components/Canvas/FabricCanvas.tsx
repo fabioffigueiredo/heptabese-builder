@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import { Canvas as FabricCanvas, Circle, Rect, Triangle, Path, FabricText } from "fabric";
+import { Canvas as FabricCanvas, Circle, Rect, Triangle, Path, FabricText, PencilBrush } from "fabric";
 import { WhiteboardTool, ShapeTool, DrawingElement, Position } from "@/types/whiteboard";
 import { toast } from "sonner";
 
@@ -42,14 +42,22 @@ export default function FabricCanvasComponent({
       selection: tool === "select",
     });
 
-    // Initialize the freeDrawingBrush after canvas creation
-    // Check if freeDrawingBrush exists before setting properties
-    if (canvas.freeDrawingBrush) {
-      canvas.freeDrawingBrush.color = brushColor;
-      canvas.freeDrawingBrush.width = brushSize;
-    } else {
-      // If freeDrawingBrush doesn't exist, we'll set it when drawing mode is enabled
-      console.log("FreeDrawingBrush not available yet, will initialize when needed");
+    // Manually create and configure the drawing brush for Fabric.js v6
+    try {
+      const brush = new PencilBrush(canvas);
+      brush.color = brushColor;
+      brush.width = brushSize;
+      canvas.freeDrawingBrush = brush;
+    } catch (error) {
+      // Fallback to original method
+      canvas.isDrawingMode = true;
+      setTimeout(() => {
+        if (canvas.freeDrawingBrush) {
+          canvas.freeDrawingBrush.color = brushColor;
+          canvas.freeDrawingBrush.width = brushSize;
+        }
+        canvas.isDrawingMode = false;
+      }, 0);
     }
 
     setFabricCanvas(canvas);
@@ -86,20 +94,40 @@ export default function FabricCanvasComponent({
       
       case 'draw':
         fabricCanvas.isDrawingMode = true;
-        // Ensure freeDrawingBrush is available when enabling drawing mode
-        if (fabricCanvas.freeDrawingBrush) {
-          fabricCanvas.freeDrawingBrush.color = brushColor;
-          fabricCanvas.freeDrawingBrush.width = brushSize;
-        }
+        
+        // Use setTimeout to ensure brush is available
+        setTimeout(() => {
+          if (fabricCanvas.freeDrawingBrush) {
+            fabricCanvas.freeDrawingBrush.color = brushColor;
+            fabricCanvas.freeDrawingBrush.width = brushSize;
+          }
+        }, 0);
         break;
       
       case 'highlighter':
         fabricCanvas.isDrawingMode = true;
-        // Ensure freeDrawingBrush is available when enabling drawing mode
-        if (fabricCanvas.freeDrawingBrush) {
-          fabricCanvas.freeDrawingBrush.color = brushColor;
-          fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
-        }
+        
+        // Use setTimeout to ensure brush is available
+        setTimeout(() => {
+          if (fabricCanvas.freeDrawingBrush) {
+            // Convert hex color to rgba with transparency for highlighter effect
+            const hexToRgba = (hex: string, alpha: number) => {
+              const r = parseInt(hex.slice(1, 3), 16);
+              const g = parseInt(hex.slice(3, 5), 16);
+              const b = parseInt(hex.slice(5, 7), 16);
+              return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+            };
+            
+            fabricCanvas.freeDrawingBrush.color = hexToRgba(brushColor, 0.5); // 50% transparency for better visibility
+            fabricCanvas.freeDrawingBrush.width = brushSize * 4; // Wider for highlighter
+            
+            // Set brush properties for highlighter effect
+            if (fabricCanvas.freeDrawingBrush instanceof PencilBrush) {
+              fabricCanvas.freeDrawingBrush.strokeLineCap = 'round';
+              fabricCanvas.freeDrawingBrush.strokeLineJoin = 'round';
+            }
+          }
+        }, 0);
         break;
       
       case 'text':
@@ -118,6 +146,19 @@ export default function FabricCanvasComponent({
         fabricCanvas.defaultCursor = 'default';
     }
   }, [tool, fabricCanvas, brushSize, brushColor]);
+
+  // Update brush properties when they change
+  useEffect(() => {
+    if (!fabricCanvas || !fabricCanvas.freeDrawingBrush) return;
+    
+    if (tool === 'draw') {
+      fabricCanvas.freeDrawingBrush.color = brushColor;
+      fabricCanvas.freeDrawingBrush.width = brushSize;
+    } else if (tool === 'highlighter') {
+      fabricCanvas.freeDrawingBrush.color = brushColor;
+      fabricCanvas.freeDrawingBrush.width = brushSize * 3;
+    }
+  }, [fabricCanvas, brushSize, brushColor, tool]);
 
   // Handle zoom and pan
   useEffect(() => {
@@ -149,6 +190,7 @@ export default function FabricCanvasComponent({
   const addShape = (pointer: { x: number; y: number }, type: ShapeTool) => {
     if (!fabricCanvas) return;
 
+    const elementId = `shape-${Date.now()}`;
     let shape;
     const commonProps = {
       left: pointer.x,
@@ -156,6 +198,7 @@ export default function FabricCanvasComponent({
       fill: brushColor,
       stroke: brushColor,
       strokeWidth: 2,
+      data: { elementId }, // Store element ID in fabric object
     };
 
     switch (type) {
@@ -192,7 +235,7 @@ export default function FabricCanvasComponent({
 
     // Create drawing element for state management
     const element: DrawingElement = {
-      id: `shape-${Date.now()}`,
+      id: elementId,
       type: 'shape',
       position: { x: pointer.x, y: pointer.y },
       size: { width: 100, height: 100 },
@@ -212,12 +255,14 @@ export default function FabricCanvasComponent({
   const addText = (pointer: { x: number; y: number }) => {
     if (!fabricCanvas) return;
 
+    const elementId = `text-${Date.now()}`;
     const text = new FabricText('Type here...', {
       left: pointer.x,
       top: pointer.y,
       fontFamily: 'Arial',
       fontSize: 20,
       fill: brushColor,
+      data: { elementId }, // Store element ID in fabric object
     });
 
     fabricCanvas.add(text);
@@ -228,7 +273,7 @@ export default function FabricCanvasComponent({
 
     // Create drawing element for state management
     const element: DrawingElement = {
-      id: `text-${Date.now()}`,
+      id: elementId,
       type: 'text',
       position: { x: pointer.x, y: pointer.y },
       properties: {
@@ -244,6 +289,41 @@ export default function FabricCanvasComponent({
     toast("Text added - click to edit");
   };
 
+  // Handle keyboard events for deleting selected objects
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if ((event.key === 'Delete' || event.key === 'Backspace') && tool === 'select') {
+        const activeObject = fabricCanvas.getActiveObject();
+        const activeObjects = fabricCanvas.getActiveObjects();
+        
+        if (activeObjects && activeObjects.length > 0) {
+          event.preventDefault();
+          
+          // Remove objects from canvas
+          activeObjects.forEach(obj => {
+            fabricCanvas.remove(obj);
+            
+            // If object has a custom id, call onElementDelete
+            if (obj.data && obj.data.elementId) {
+              onElementDelete(obj.data.elementId);
+            }
+          });
+          
+          fabricCanvas.discardActiveObject();
+          fabricCanvas.renderAll();
+          toast.success('Desenho(s) excluído(s)');
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [fabricCanvas, tool, onElementDelete]);
+
   // Handle drawing events
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -251,8 +331,13 @@ export default function FabricCanvasComponent({
     const handlePathCreated = (e: any) => {
       const path = e.path;
       if (path) {
+        const elementId = `drawing-${Date.now()}`;
+        
+        // Store element ID in the fabric object for later reference
+        path.set('data', { elementId });
+        
         const element: DrawingElement = {
-          id: `drawing-${Date.now()}`,
+          id: elementId,
           type: 'drawing',
           position: { x: path.left || 0, y: path.top || 0 },
           properties: {
@@ -273,7 +358,7 @@ export default function FabricCanvasComponent({
       fabricCanvas.off('path:created', handlePathCreated);
       fabricCanvas.off('mouse:down', handleMouseDown);
     };
-  }, [fabricCanvas, handleMouseDown, onElementAdd, brushSize, brushColor, tool]);
+  }, [fabricCanvas, handleMouseDown, onElementAdd, onElementDelete, brushSize, brushColor, tool]);
 
   return (
     <div className="absolute inset-0 pointer-events-auto">

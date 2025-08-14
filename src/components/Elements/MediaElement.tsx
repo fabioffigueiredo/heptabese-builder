@@ -52,14 +52,29 @@ export default function MediaElement({ element, onUpdate, onDelete, scale }: Med
   };
 
   const renderContent = () => {
+    if (!element.properties || !element.properties.src) {
+      return (
+        <div className="w-full h-full bg-gray-200 border-2 border-dashed border-gray-400 rounded flex items-center justify-center">
+          <div className="text-gray-500 text-center">
+            <div className="text-2xl mb-2">📄</div>
+            <div className="text-sm">Conteúdo não disponível</div>
+          </div>
+        </div>
+      );
+    }
+
     switch (element.type) {
       case 'image':
         return (
           <img
             src={element.properties.src}
-            alt={element.properties.alt}
+            alt={element.properties.alt || 'Imagem'}
             className="w-full h-full object-cover rounded"
             draggable={false}
+            onError={(e) => {
+              console.error('Erro ao carregar imagem:', element.properties.src);
+              e.currentTarget.style.display = 'none';
+            }}
           />
         );
 
@@ -153,11 +168,16 @@ export default function MediaElement({ element, onUpdate, onDelete, scale }: Med
       <Button
         variant="destructive"
         size="sm"
-        className="absolute -top-2 -right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        className="absolute -top-2 -right-2 w-6 h-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity z-10"
         onClick={(e) => {
+          e.preventDefault();
           e.stopPropagation();
           onDelete(element.id);
-          toast.success("Media element deleted");
+          toast.success("Elemento de mídia excluído");
+        }}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
         }}
       >
         <Trash2 className="h-3 w-3" />

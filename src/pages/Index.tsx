@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import Whiteboard from "@/components/Whiteboard";
 import CardDatabase from "@/components/Database/CardDatabase";
 import { EnhancedCardData, CardProperties } from "@/types/heptabase";
+import { CardData } from "@/types/whiteboard";
 
 const Index = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -109,6 +110,69 @@ const Index = () => {
     setEnhancedCards(prev => [...prev, newCard]);
   };
 
+  const handleNewWhiteboard = () => {
+    // Reset whiteboard state - this could be expanded to create multiple whiteboards
+    setCurrentView('whiteboard');
+  };
+
+  // Convert EnhancedCardData to CardData for Whiteboard
+  const whiteboardCards = useMemo(() => {
+    return enhancedCards.map((card): CardData => ({
+      id: card.id,
+      title: card.title,
+      content: card.content,
+      position: card.position,
+      size: card.size,
+      tags: card.tags,
+      color: card.color,
+    }));
+  }, [enhancedCards]);
+
+  // Handle cards changes from Whiteboard
+  const handleWhiteboardCardsChange = (cards: CardData[]) => {
+    // Update the enhanced cards state with changes from whiteboard
+    setEnhancedCards(prev => {
+      const updatedCards = cards.map(card => {
+        const existingCard = prev.find(c => c.id === card.id);
+        if (existingCard) {
+          // Update existing card while preserving enhanced properties
+          return {
+            ...existingCard,
+            title: card.title,
+            content: card.content,
+            position: card.position,
+            size: card.size,
+            tags: card.tags,
+            color: card.color,
+          };
+        } else {
+          // Create new enhanced card from whiteboard card
+          return {
+            id: card.id,
+            title: card.title,
+            content: card.content,
+            position: card.position,
+            size: card.size,
+            tags: card.tags,
+            color: card.color,
+            properties: {
+              status: 'todo',
+              priority: 'medium',
+              progress: 0,
+              rating: 0,
+              dateCreated: new Date(),
+              dateModified: new Date(),
+              favorite: false,
+            },
+            linkedCards: [],
+            backlinks: [],
+          };
+        }
+      });
+      return updatedCards;
+    });
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background">
       <TopBar 
@@ -121,10 +185,16 @@ const Index = () => {
           isCollapsed={sidebarCollapsed}
           onViewModeChange={setCurrentView}
           currentView={currentView}
+          onNewCard={handleCardCreate}
+          onNewWhiteboard={handleNewWhiteboard}
         />
         
         {currentView === 'whiteboard' ? (
-          <Whiteboard />
+          <Whiteboard 
+            onNewCard={handleCardCreate} 
+            cards={whiteboardCards}
+            onCardsChange={handleWhiteboardCardsChange}
+          />
         ) : (
           <CardDatabase
             cards={enhancedCards}

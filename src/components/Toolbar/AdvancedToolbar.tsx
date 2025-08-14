@@ -5,7 +5,7 @@ import {
   Plus, ZoomIn, ZoomOut, Move, Hand, Link, 
   Pen, Highlighter, Type, Square, Circle, 
   Triangle, Image, Video, FileText, Globe,
-  Palette, Settings, Layers
+  Palette, Settings, Layers, Target
 } from "lucide-react";
 import { WhiteboardTool, ShapeTool } from "@/types/whiteboard";
 import { toast } from "sonner";
@@ -18,19 +18,33 @@ interface AdvancedToolbarProps {
   zoom: number;
   brushSize: number;
   brushColor: string;
+  highlightColor?: string;
   onToolChange: (tool: WhiteboardTool) => void;
   onShapeToolChange: (tool: ShapeTool) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onBrushSizeChange: (size: number) => void;
   onBrushColorChange: (color: string) => void;
+  onHighlightColorChange?: (color: string) => void;
   onAddCard: () => void;
   onConnect: () => void;
+  onCenterView?: () => void;
 }
 
 const colors = [
-  "#000000", "#ff0000", "#00ff00", "#0000ff", "#ffff00", 
+  "#000000", "#ff0000", "#39ff14", "#0000ff", "#ffff00", 
   "#ff00ff", "#00ffff", "#ffa500", "#800080", "#008000"
+];
+
+const highlightColors = [
+  { name: "Amarelo", color: "#ffff00" },
+  { name: "Verde", color: "#39ff14" },
+  { name: "Azul", color: "#00bfff" },
+  { name: "Rosa", color: "#ff69b4" },
+  { name: "Laranja", color: "#ffa500" },
+  { name: "Roxo", color: "#da70d6" },
+  { name: "Vermelho", color: "#ff6b6b" },
+  { name: "Ciano", color: "#40e0d0" }
 ];
 
 export default function AdvancedToolbar({
@@ -39,16 +53,20 @@ export default function AdvancedToolbar({
   zoom,
   brushSize,
   brushColor,
+  highlightColor = "#ffff00",
   onToolChange,
   onShapeToolChange,
   onZoomIn,
   onZoomOut,
   onBrushSizeChange,
   onBrushColorChange,
+  onHighlightColorChange,
   onAddCard,
-  onConnect
+  onConnect,
+  onCenterView
 }: AdvancedToolbarProps) {
   const [isShapeMenuOpen, setIsShapeMenuOpen] = useState(false);
+  const [isHighlightMenuOpen, setIsHighlightMenuOpen] = useState(false);
 
   const handleToolClick = (newTool: WhiteboardTool) => {
     onToolChange(newTool);
@@ -90,13 +108,53 @@ export default function AdvancedToolbar({
       >
         <Pen className="h-4 w-4" />
       </Button>
-      <Button
-        variant={tool === "highlighter" ? "default" : "ghost"}
-        size="sm"
-        onClick={() => handleToolClick("highlighter")}
-      >
-        <Highlighter className="h-4 w-4" />
-      </Button>
+      {/* Highlighter with Color Menu */}
+      <Popover open={isHighlightMenuOpen} onOpenChange={setIsHighlightMenuOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant={tool === "highlighter" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => {
+              if (tool !== "highlighter") {
+                handleToolClick("highlighter");
+              }
+              setIsHighlightMenuOpen(!isHighlightMenuOpen);
+            }}
+          >
+            <Highlighter className="h-4 w-4" style={{ color: tool === "highlighter" ? highlightColor : undefined }} />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-3">
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">Cores do Marca-texto</label>
+              <div className="grid grid-cols-4 gap-2 mt-2">
+                {highlightColors.map((colorOption) => (
+                  <button
+                    key={colorOption.color}
+                    className={`w-10 h-10 rounded-md border-2 flex items-center justify-center transition-all hover:scale-105 ${
+                      highlightColor === colorOption.color ? 'border-primary ring-2 ring-primary/20' : 'border-border hover:border-primary/50'
+                    }`}
+                    style={{ backgroundColor: colorOption.color }}
+                    onClick={() => {
+                      onHighlightColorChange?.(colorOption.color);
+                      if (tool !== "highlighter") {
+                        handleToolClick("highlighter");
+                      }
+                      setIsHighlightMenuOpen(false);
+                    }}
+                    title={colorOption.name}
+                  >
+                    {highlightColor === colorOption.color && (
+                      <div className="w-3 h-3 bg-white rounded-full shadow-sm" />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </PopoverContent>
+      </Popover>
       
       {/* Shape Tools */}
       <Popover open={isShapeMenuOpen} onOpenChange={setIsShapeMenuOpen}>
@@ -231,6 +289,17 @@ export default function AdvancedToolbar({
       <Button variant="ghost" size="sm" onClick={onZoomIn}>
         <ZoomIn className="h-4 w-4" />
       </Button>
+      
+      {onCenterView && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={onCenterView}
+          title="Center view on content"
+        >
+          <Target className="h-4 w-4" />
+        </Button>
+      )}
       
       <Separator orientation="vertical" className="h-6 mx-1" />
       

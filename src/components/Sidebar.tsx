@@ -21,12 +21,16 @@ interface SidebarProps {
   isCollapsed?: boolean;
   onViewModeChange?: (mode: 'whiteboard' | 'database') => void;
   currentView?: 'whiteboard' | 'database';
+  onNewCard?: () => void;
+  onNewWhiteboard?: () => void;
 }
 
 export default function Sidebar({ 
   isCollapsed = false, 
   onViewModeChange,
-  currentView = 'whiteboard' 
+  currentView = 'whiteboard',
+  onNewCard,
+  onNewWhiteboard
 }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedSections, setExpandedSections] = useState({
@@ -108,13 +112,14 @@ export default function Sidebar({
       </div>
 
       {/* Content */}
-      <ScrollArea className="flex-1 p-4">
+      <div className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-6">
           {/* Quick Actions */}
           <div className="space-y-2">
             <Button 
               variant="ghost" 
               className="w-full justify-start gap-2 h-9 text-sm hover:bg-accent/50"
+              onClick={onNewCard}
             >
               <Plus className="h-4 w-4" />
               New Card
@@ -122,6 +127,7 @@ export default function Sidebar({
             <Button 
               variant="ghost" 
               className="w-full justify-start gap-2 h-9 text-sm hover:bg-accent/50"
+              onClick={onNewWhiteboard}
             >
               <FileText className="h-4 w-4" />
               New Whiteboard
@@ -246,7 +252,7 @@ export default function Sidebar({
             )}
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
