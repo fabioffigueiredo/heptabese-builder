@@ -46,7 +46,7 @@ export default function Whiteboard() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<Position>({ x: 0, y: 0 });
+  const [pan, setPan] = useState<Position>({ x: 100, y: 100 });
   const [currentTool, setCurrentTool] = useState<WhiteboardTool>("select");
   const [shapeTool, setShapeTool] = useState<ShapeTool>("rectangle");
   const [drawingElements, setDrawingElements] = useState<DrawingElement[]>([]);
@@ -80,6 +80,7 @@ export default function Whiteboard() {
   };
 
   const handlePanChange = (newPan: Position) => {
+    console.log("Pan changed to:", newPan);
     setPan(newPan);
   };
 
@@ -285,6 +286,9 @@ export default function Whiteboard() {
   console.log("Current cards:", cards);
   console.log("Current connections:", connections);
   console.log("Current drawing elements:", drawingElements);
+  console.log("Current zoom:", zoom, "pan:", pan);
+  console.log("Container size:", containerSize);
+  console.log("Show grid:", showGrid);
 
   return (
     <div className="flex flex-col h-full">
