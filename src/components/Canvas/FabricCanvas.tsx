@@ -42,9 +42,19 @@ export default function FabricCanvasComponent({
       selection: tool === "select",
     });
 
-    // Initialize the freeDrawingBrush for Fabric.js v6
-    canvas.freeDrawingBrush.color = brushColor;
-    canvas.freeDrawingBrush.width = brushSize;
+    // Initialize the freeDrawingBrush for Fabric.js v6 with proper checks
+    if (canvas.freeDrawingBrush) {
+      canvas.freeDrawingBrush.color = brushColor;
+      canvas.freeDrawingBrush.width = brushSize;
+    } else {
+      // For Fabric.js v6, we may need to enable drawing mode first to initialize the brush
+      canvas.isDrawingMode = true;
+      if (canvas.freeDrawingBrush) {
+        canvas.freeDrawingBrush.color = brushColor;
+        canvas.freeDrawingBrush.width = brushSize;
+      }
+      canvas.isDrawingMode = false;
+    }
 
     setFabricCanvas(canvas);
 
@@ -80,14 +90,18 @@ export default function FabricCanvasComponent({
       
       case 'draw':
         fabricCanvas.isDrawingMode = true;
-        fabricCanvas.freeDrawingBrush.color = brushColor;
-        fabricCanvas.freeDrawingBrush.width = brushSize;
+        if (fabricCanvas.freeDrawingBrush) {
+          fabricCanvas.freeDrawingBrush.color = brushColor;
+          fabricCanvas.freeDrawingBrush.width = brushSize;
+        }
         break;
       
       case 'highlighter':
         fabricCanvas.isDrawingMode = true;
-        fabricCanvas.freeDrawingBrush.color = brushColor;
-        fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
+        if (fabricCanvas.freeDrawingBrush) {
+          fabricCanvas.freeDrawingBrush.color = brushColor;
+          fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
+        }
         break;
       
       case 'text':
