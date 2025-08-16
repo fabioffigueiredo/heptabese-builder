@@ -18,7 +18,6 @@ interface AdvancedToolbarProps {
   zoom: number;
   brushSize: number;
   brushColor: string;
-  isConnecting: boolean;
   onToolChange: (tool: WhiteboardTool) => void;
   onShapeToolChange: (tool: ShapeTool) => void;
   onZoomIn: () => void;
@@ -40,7 +39,6 @@ export default function AdvancedToolbar({
   zoom,
   brushSize,
   brushColor,
-  isConnecting,
   onToolChange,
   onShapeToolChange,
   onZoomIn,
