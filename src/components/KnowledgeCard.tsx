@@ -30,40 +30,39 @@ interface Size {
 }
 
 interface KnowledgeCardProps {
-  id: string;
-  title: string;
-  content: string;
-  tags: string[];
-  color: string;
-  position: Position;
-  size?: Size;
-  onPositionChange: (id: string, position: Position) => void;
-  onSizeChange?: (id: string, size: Size) => void;
-  onDelete: (id: string) => void;
-  onUpdate: (id: string, updates: any) => void;
-  onStartConnection: (cardId: string, position: Position) => void;
-  onEndConnection: (cardId: string, position: Position) => void;
+  data: {
+    id: string;
+    title: string;
+    content: string;
+    tags: string[];
+    color: string;
+    position: Position;
+    size?: Size;
+  };
+  onPositionChange: (position: Position) => void;
+  onSizeChange?: (size: Size) => void;
+  onDelete: () => void;
+  onUpdate: (updates: Partial<any>) => void;
+  onConnectionStart: () => void;
+  onConnectionEnd: () => void;
+  isConnecting: boolean;
+  zoom: number;
   disabled?: boolean;
-  scale?: number;
 }
 
 export default function KnowledgeCard({
-  id,
-  title,
-  content,
-  tags,
-  color,
-  position,
-  size = { width: 320, height: 240 },
+  data,
   onPositionChange,
   onSizeChange,
   onDelete,
   onUpdate,
-  onStartConnection,
-  onEndConnection,
+  onConnectionStart,
+  onConnectionEnd,
+  isConnecting,
+  zoom,
   disabled = false,
-  scale = 1,
 }: KnowledgeCardProps) {
+  const { id, title, content, tags, color, position = { x: 0, y: 0 }, size = { width: 320, height: 240 } } = data;
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
@@ -88,8 +87,8 @@ export default function KnowledgeCard({
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       setDragOffset({
-        x: e.clientX - position.x,
-        y: e.clientY - position.y,
+        x: e.clientX - (position?.x || 0),
+        y: e.clientY - (position?.y || 0),
       });
       setIsDragging(true);
     }
@@ -102,14 +101,14 @@ export default function KnowledgeCard({
         x: e.clientX - dragOffset.x,
         y: e.clientY - dragOffset.y,
       };
-      onPositionChange(id, newPosition);
+      onPositionChange(newPosition);
     } else if (isResizing && onSizeChange) {
       e.preventDefault();
       const deltaX = e.clientX - resizeStart.x;
       const deltaY = e.clientY - resizeStart.y;
       
-      let newSize = { width: size.width, height: size.height };
-      let newPosition = { x: position.x, y: position.y };
+      let newSize = { width: size?.width || 320, height: size?.height || 240 };
+      let newPosition = { x: position?.x || 0, y: position?.y || 0 };
       
       switch (resizeType) {
         case 'nw': // northwest
@@ -152,9 +151,9 @@ export default function KnowledgeCard({
       newSize.width = Math.min(800, newSize.width);
       newSize.height = Math.min(600, newSize.height);
       
-      onSizeChange(id, newSize);
-      if (newPosition.x !== position.x || newPosition.y !== position.y) {
-        onPositionChange(id, newPosition);
+      onSizeChange?.(newSize);
+      if (newPosition.x !== (position?.x || 0) || newPosition.y !== (position?.y || 0)) {
+        onPositionChange(newPosition);
       }
     }
   }, [isDragging, isResizing, dragOffset, resizeStart, resizeType, id, onPositionChange, onSizeChange, disabled, size, position]);
@@ -178,8 +177,8 @@ export default function KnowledgeCard({
     }
   }, [isDragging, isResizing, handleMouseMove, handleMouseUp]);
 
-  const handleSave = (data: { title: string; content: string; tags: string[] }) => {
-    onUpdate(id, data);
+  const handleSave = (saveData: { title: string; content: string; tags: string[] }) => {
+    onUpdate(saveData);
     setIsEditing(false);
   };
 
@@ -198,10 +197,10 @@ export default function KnowledgeCard({
     setResizeStart({
       x: e.clientX,
       y: e.clientY,
-      width: size.width,
-      height: size.height,
-      posX: position.x,
-      posY: position.y,
+      width: size?.width || 320,
+      height: size?.height || 240,
+      posX: position?.x || 0,
+      posY: position?.y || 0,
     });
   }, [disabled, isEditing, size, position]);
 
@@ -210,10 +209,10 @@ export default function KnowledgeCard({
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       // Calculate the exact position of the right connection point
-      const connectionX = position.x + size.width; // right edge using actual card width
-      const connectionY = position.y + size.height / 2; // middle of card height
+      const connectionX = (position?.x || 0) + (size?.width || 320); // right edge using actual card width
+      const connectionY = (position?.y || 0) + (size?.height || 240) / 2; // middle of card height
       console.log(`Start connection from card ${id} at position:`, { x: connectionX, y: connectionY });
-      onStartConnection(id, { x: connectionX, y: connectionY });
+      onConnectionStart();
     }
   };
 
@@ -222,10 +221,10 @@ export default function KnowledgeCard({
     const rect = cardRef.current?.getBoundingClientRect();
     if (rect) {
       // Calculate the exact position of the left connection point
-      const connectionX = position.x; // left edge of card
-      const connectionY = position.y + size.height / 2; // middle of card height
+      const connectionX = position?.x || 0; // left edge of card
+      const connectionY = (position?.y || 0) + (size?.height || 240) / 2; // middle of card height
       console.log(`End connection to card ${id} at position:`, { x: connectionX, y: connectionY });
-      onEndConnection(id, { x: connectionX, y: connectionY });
+      onConnectionEnd();
     }
   };
 
@@ -246,11 +245,11 @@ export default function KnowledgeCard({
         ${disabled ? "opacity-50" : ""}
       `}
       style={{
-        left: position.x,
-        top: position.y,
-        width: size.width,
-        height: size.height,
-        transform: `scale(${scale})`,
+        left: position?.x || 0,
+        top: position?.y || 0,
+        width: size?.width || 320,
+        height: size?.height || 240,
+        transform: `scale(${zoom})`,
         transformOrigin: "0 0",
       }}
       onMouseDown={handleMouseDown}
@@ -278,7 +277,7 @@ export default function KnowledgeCard({
                   <Plus className="h-4 w-4 mr-2" />
                   Start Connection
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onDelete(id)} className="text-destructive">
+                <DropdownMenuItem onClick={onDelete} className="text-destructive">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete
                 </DropdownMenuItem>
@@ -301,7 +300,7 @@ export default function KnowledgeCard({
         ) : (
           <>
             <p className="text-sm text-card-foreground/80 leading-relaxed overflow-y-auto"
-               style={{ maxHeight: `${size.height - 160}px` }}>
+               style={{ maxHeight: `${(size?.height || 240) - 160}px` }}>
               {content}
             </p>
             

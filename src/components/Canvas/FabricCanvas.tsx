@@ -8,7 +8,6 @@ interface FabricCanvasProps {
   shapeTool: ShapeTool;
   brushSize: number;
   brushColor: string;
-  stickyNoteColor?: string;
   zoom: number;
   pan: Position;
   onElementAdd: (element: DrawingElement) => void;
@@ -21,7 +20,6 @@ export default function FabricCanvasComponent({
   shapeTool,
   brushSize,
   brushColor,
-  stickyNoteColor = "#fbbf24",
   zoom,
   pan,
   onElementAdd,
@@ -38,32 +36,28 @@ export default function FabricCanvasComponent({
     if (!canvasRef.current) return;
 
     const canvas = new FabricCanvas(canvasRef.current, {
-      width: window.innerWidth,
-      height: window.innerHeight,
+      width: Math.max(window.innerWidth, 5000),
+      height: Math.max(window.innerHeight, 5000),
       backgroundColor: "transparent",
       selection: tool === "select",
     });
 
-    // Initialize the freeDrawingBrush for Fabric.js v6 with proper checks
+    // Initialize the freeDrawingBrush after canvas creation
+    // Check if freeDrawingBrush exists before setting properties
     if (canvas.freeDrawingBrush) {
       canvas.freeDrawingBrush.color = brushColor;
       canvas.freeDrawingBrush.width = brushSize;
     } else {
-      // For Fabric.js v6, we may need to enable drawing mode first to initialize the brush
-      canvas.isDrawingMode = true;
-      if (canvas.freeDrawingBrush) {
-        canvas.freeDrawingBrush.color = brushColor;
-        canvas.freeDrawingBrush.width = brushSize;
-      }
-      canvas.isDrawingMode = false;
+      // If freeDrawingBrush doesn't exist, we'll set it when drawing mode is enabled
+      console.log("FreeDrawingBrush not available yet, will initialize when needed");
     }
 
     setFabricCanvas(canvas);
 
     const handleResize = () => {
       canvas.setDimensions({
-        width: window.innerWidth,
-        height: window.innerHeight,
+        width: Math.max(window.innerWidth, 5000),
+        height: Math.max(window.innerHeight, 5000),
       });
     };
 
@@ -92,6 +86,7 @@ export default function FabricCanvasComponent({
       
       case 'draw':
         fabricCanvas.isDrawingMode = true;
+        // Ensure freeDrawingBrush is available when enabling drawing mode
         if (fabricCanvas.freeDrawingBrush) {
           fabricCanvas.freeDrawingBrush.color = brushColor;
           fabricCanvas.freeDrawingBrush.width = brushSize;
@@ -100,6 +95,7 @@ export default function FabricCanvasComponent({
       
       case 'highlighter':
         fabricCanvas.isDrawingMode = true;
+        // Ensure freeDrawingBrush is available when enabling drawing mode
         if (fabricCanvas.freeDrawingBrush) {
           fabricCanvas.freeDrawingBrush.color = brushColor;
           fabricCanvas.freeDrawingBrush.width = brushSize * 3; // Thicker for highlighter
@@ -123,7 +119,19 @@ export default function FabricCanvasComponent({
     }
   }, [tool, fabricCanvas, brushSize, brushColor]);
 
-  // Handle zoom and pan - removed to prevent double transform
+  // Handle zoom and pan
+  useEffect(() => {
+    if (!fabricCanvas) return;
+
+    const viewportTransform = fabricCanvas.viewportTransform;
+    if (viewportTransform) {
+      viewportTransform[0] = zoom;
+      viewportTransform[3] = zoom;
+      viewportTransform[4] = pan.x * zoom;
+      viewportTransform[5] = pan.y * zoom;
+      fabricCanvas.setViewportTransform(viewportTransform);
+    }
+  }, [fabricCanvas, zoom, pan]);
 
   // Handle mouse events for custom tools
   const handleMouseDown = useCallback((e: any) => {
@@ -135,10 +143,8 @@ export default function FabricCanvasComponent({
       addShape(pointer, shapeTool);
     } else if (tool === 'text') {
       addText(pointer);
-    } else if (tool === 'sticky-note') {
-      addStickyNote(pointer);
     }
-  }, [fabricCanvas, tool, shapeTool, stickyNoteColor]);
+  }, [fabricCanvas, tool, shapeTool]);
 
   const addShape = (pointer: { x: number; y: number }, type: ShapeTool) => {
     if (!fabricCanvas) return;
@@ -238,23 +244,6 @@ export default function FabricCanvasComponent({
     toast("Text added - click to edit");
   };
 
-  const addStickyNote = (pointer: { x: number; y: number }) => {
-    const element: DrawingElement = {
-      id: `sticky-${Date.now()}`,
-      type: 'sticky-note',
-      position: { x: pointer.x, y: pointer.y },
-      size: { width: 200, height: 150 },
-      properties: {
-        stickyColor: stickyNoteColor,
-        stickyText: "New note",
-      },
-      layer: 1,
-    };
-
-    onElementAdd(element);
-    toast("Sticky note added - double click to edit");
-  };
-
   // Handle drawing events
   useEffect(() => {
     if (!fabricCanvas) return;
@@ -286,11 +275,9 @@ export default function FabricCanvasComponent({
     };
   }, [fabricCanvas, handleMouseDown, onElementAdd, brushSize, brushColor, tool]);
 
-  const isDrawingTool = tool === 'draw' || tool === 'highlighter' || tool === 'shape' || tool === 'text' || tool === 'sticky-note';
-  
   return (
     <div 
-      className={`absolute inset-0 ${isDrawingTool ? 'z-30' : 'z-10'}`}
+      className="absolute inset-0 z-10"
       style={{
         pointerEvents: tool === 'pan' ? 'none' : 'auto',
       }}

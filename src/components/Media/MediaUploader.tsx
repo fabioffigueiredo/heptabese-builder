@@ -10,11 +10,12 @@ import { toast } from "sonner";
 import { DrawingElement } from "@/types/whiteboard";
 
 interface MediaUploaderProps {
-  onMediaAdd: (element: DrawingElement) => void;
-  position: { x: number; y: number };
+  tool: string;
+  onUpload: (element: any) => void;
+  onCancel: () => void;
 }
 
-export default function MediaUploader({ onMediaAdd, position }: MediaUploaderProps) {
+export default function MediaUploader({ tool, onUpload, onCancel }: MediaUploaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState("");
   const [linkTitle, setLinkTitle] = useState("");
@@ -42,7 +43,7 @@ export default function MediaUploader({ onMediaAdd, position }: MediaUploaderPro
         const element: DrawingElement = {
           id: `${type}-${Date.now()}`,
           type,
-          position,
+          position: { x: 100, y: 100 },
           size: type === 'image' ? { width: 300, height: 200 } : { width: 400, height: 300 },
           properties: {
             src: result,
@@ -52,14 +53,14 @@ export default function MediaUploader({ onMediaAdd, position }: MediaUploaderPro
           layer: 1,
         };
 
-        onMediaAdd(element);
+        onUpload(element);
         toast.success(`${type} uploaded successfully`);
         setIsOpen(false);
       };
 
       reader.readAsDataURL(file);
     });
-  }, [onMediaAdd, position]);
+  }, [onUpload]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -80,7 +81,7 @@ export default function MediaUploader({ onMediaAdd, position }: MediaUploaderPro
     const element: DrawingElement = {
       id: `link-${Date.now()}`,
       type: 'link',
-      position,
+      position: { x: 100, y: 100 },
       size: { width: 300, height: 100 },
       properties: {
         url: linkUrl,
@@ -90,7 +91,7 @@ export default function MediaUploader({ onMediaAdd, position }: MediaUploaderPro
       layer: 1,
     };
 
-    onMediaAdd(element);
+    onUpload(element);
     toast.success("Link added successfully");
     setIsOpen(false);
     setLinkUrl("");

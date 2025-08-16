@@ -5,7 +5,7 @@ import {
   Plus, ZoomIn, ZoomOut, Move, Hand, Link, 
   Pen, Highlighter, Type, Square, Circle, 
   Triangle, Image, Video, FileText, Globe,
-  Palette, Settings, Layers, StickyNote
+  Palette, Settings, Layers
 } from "lucide-react";
 import { WhiteboardTool, ShapeTool } from "@/types/whiteboard";
 import { toast } from "sonner";
@@ -18,14 +18,13 @@ interface AdvancedToolbarProps {
   zoom: number;
   brushSize: number;
   brushColor: string;
-  stickyNoteColor: string;
+  isConnecting: boolean;
   onToolChange: (tool: WhiteboardTool) => void;
   onShapeToolChange: (tool: ShapeTool) => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onBrushSizeChange: (size: number) => void;
   onBrushColorChange: (color: string) => void;
-  onStickyNoteColorChange: (color: string) => void;
   onAddCard: () => void;
   onConnect: () => void;
 }
@@ -35,33 +34,19 @@ const colors = [
   "#ff00ff", "#00ffff", "#ffa500", "#800080", "#008000"
 ];
 
-const stickyColors = [
-  "#fbbf24", // Yellow
-  "#fb7185", // Pink  
-  "#60a5fa", // Blue
-  "#34d399", // Green
-  "#f472b6", // Purple
-  "#fbbf24", // Orange
-  "#a78bfa", // Violet
-  "#fde047", // Lime
-  "#fb923c", // Amber
-  "#ef4444"  // Red
-];
-
 export default function AdvancedToolbar({
   tool,
   shapeTool = 'rectangle',
   zoom,
   brushSize,
   brushColor,
-  stickyNoteColor,
+  isConnecting,
   onToolChange,
   onShapeToolChange,
   onZoomIn,
   onZoomOut,
   onBrushSizeChange,
   onBrushColorChange,
-  onStickyNoteColorChange,
   onAddCard,
   onConnect
 }: AdvancedToolbarProps) {
@@ -161,15 +146,6 @@ export default function AdvancedToolbar({
       >
         <Type className="h-4 w-4" />
       </Button>
-
-      {/* Sticky Note Tool */}
-      <Button
-        variant={tool === "sticky-note" ? "default" : "ghost"}
-        size="sm"
-        onClick={() => handleToolClick("sticky-note")}
-      >
-        <StickyNote className="h-4 w-4" />
-      </Button>
       
       <Separator orientation="vertical" className="h-6 mx-1" />
       
@@ -236,40 +212,6 @@ export default function AdvancedToolbar({
                         className={`w-8 h-8 rounded-md border-2 ${brushColor === color ? 'border-primary' : 'border-border'}`}
                         style={{ backgroundColor: color }}
                         onClick={() => onBrushColorChange(color)}
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Separator orientation="vertical" className="h-6 mx-1" />
-        </>
-      )}
-
-      {/* Sticky Note Color Picker */}
-      {tool === "sticky-note" && (
-        <>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <div 
-                  className="w-4 h-4 rounded-sm border" 
-                  style={{ backgroundColor: stickyNoteColor }}
-                />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3 bg-popover border border-border shadow-lg z-50">
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm font-medium">Sticky Note Color</label>
-                  <div className="grid grid-cols-5 gap-2 mt-2">
-                    {stickyColors.map((color) => (
-                      <button
-                        key={color}
-                        className={`w-8 h-8 rounded-md border-2 ${stickyNoteColor === color ? 'border-primary' : 'border-border'}`}
-                        style={{ backgroundColor: color }}
-                        onClick={() => onStickyNoteColorChange(color)}
                       />
                     ))}
                   </div>

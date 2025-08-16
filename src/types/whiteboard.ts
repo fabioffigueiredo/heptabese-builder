@@ -40,7 +40,7 @@ export interface CardData {
 // Drawing Elements
 export interface DrawingElement {
   id: string;
-  type: 'shape' | 'drawing' | 'image' | 'video' | 'pdf' | 'link' | 'markdown' | 'text' | 'sticky-note';
+  type: 'shape' | 'drawing' | 'image' | 'video' | 'pdf' | 'link' | 'markdown' | 'text';
   position: Position;
   size?: Size;
   properties: ElementProperties;
@@ -74,10 +74,6 @@ export interface ElementProperties {
   fontWeight?: string;
   textAlign?: 'left' | 'center' | 'right';
   
-  // Sticky note properties
-  stickyColor?: string;
-  stickyText?: string;
-  
   // Markdown properties
   markdown?: string;
 }
@@ -91,7 +87,6 @@ export type WhiteboardTool =
   | 'highlighter'
   | 'text'
   | 'shape'
-  | 'sticky-note'
   | 'image'
   | 'video'
   | 'pdf'
@@ -107,6 +102,26 @@ export interface DrawingState {
   brushSize: number;
   brushColor: string;
   brushType: 'pen' | 'highlighter' | 'marker';
+}
+
+// Viewport state for infinite canvas
+export interface ViewportState {
+  zoom: number;
+  pan: Position;
+  bounds: {
+    min: Position;
+    max: Position;
+  };
+  center: Position;
+}
+
+// Navigation state
+export interface NavigationState {
+  isNavigating: boolean;
+  showMinimap: boolean;
+  showGrid: boolean;
+  snapToGrid: boolean;
+  gridSize: number;
 }
 
 // Layer system
