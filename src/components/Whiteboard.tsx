@@ -1,16 +1,24 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { toast } from "sonner";
-import { CardData, Position, Connection, ConnectionStyle, DrawingElement, WhiteboardTool, ShapeTool } from "@/types/whiteboard";
+import { Button } from "@/components/ui/button";
 import KnowledgeCard from "./KnowledgeCard";
-import AdvancedToolbar from "./Toolbar/AdvancedToolbar";
 import EnhancedConnectionCanvas from "./Connections/EnhancedConnectionCanvas";
 import FabricCanvasComponent from "./Canvas/FabricCanvas";
-import MediaElement from "./Elements/MediaElement";
+import AdvancedToolbar from "./Toolbar/AdvancedToolbar";
 import MediaUploader from "./Media/MediaUploader";
-import InfiniteCanvas from "./Canvas/InfiniteCanvas";
-import MiniMap from "./Canvas/MiniMap";
-import NavigationPanel from "./Canvas/NavigationPanel";
-import DynamicGrid from "./Canvas/DynamicGrid";
+import MediaElement from "./Elements/MediaElement";
+import { Plus, ZoomIn, ZoomOut, Move, Hand, Link } from "lucide-react";
+import { toast } from "sonner";
+import { 
+  WhiteboardTool, 
+  ShapeTool, 
+  CardData, 
+  Connection, 
+  ConnectionStyle, 
+  DrawingElement, 
+  Position 
+} from "@/types/whiteboard";
+
+// Types are now imported from @/types/whiteboard
 
 export default function Whiteboard() {
   const [cards, setCards] = useState<CardData[]>([
@@ -46,64 +54,50 @@ export default function Whiteboard() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<Position>({ x: 0, y: 0 });
-  const [currentTool, setCurrentTool] = useState<WhiteboardTool>("select");
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [tool, setTool] = useState<WhiteboardTool>("select");
   const [shapeTool, setShapeTool] = useState<ShapeTool>("rectangle");
+  const [isPanning, setIsPanning] = useState(false);
+  const [lastPanPoint, setLastPanPoint] = useState({ x: 0, y: 0 });
   const [drawingElements, setDrawingElements] = useState<DrawingElement[]>([]);
   const [brushSize, setBrushSize] = useState(2);
   const [brushColor, setBrushColor] = useState("#000000");
-  
-  // Navigation state
-  const [showGrid, setShowGrid] = useState(true);
-  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
-  
   const whiteboardRef = useRef<HTMLDivElement>(null);
 
-  // Update container size
-  useEffect(() => {
-    const updateSize = () => {
-      if (whiteboardRef.current) {
-        setContainerSize({
-          width: whiteboardRef.current.clientWidth,
-          height: whiteboardRef.current.clientHeight
-        });
-      }
-    };
-
-    updateSize();
-    window.addEventListener('resize', updateSize);
-    return () => window.removeEventListener('resize', updateSize);
-  }, []);
-
-  const handleZoomChange = (newZoom: number) => {
-    setZoom(newZoom);
-  };
-
-  const handlePanChange = (newPan: Position) => {
-    setPan(newPan);
-  };
-
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(100, prev * 1.2));
-    toast("Zoomed in");
+    setZoom(prev => Math.min(prev * 1.2, 3));
+    toast("Zoom in");
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(0.01, prev / 1.2));
-    toast("Zoomed out");
+    setZoom(prev => Math.max(prev / 1.2, 0.3));
+    toast("Zoom out");
   };
 
-  const handleToggleGrid = () => {
-    setShowGrid(prev => !prev);
-    toast(showGrid ? "Grid hidden" : "Grid shown");
-  };
-
-  const handleNavigate = (newPan: Position, newZoom?: number) => {
-    setPan(newPan);
-    if (newZoom !== undefined) {
-      setZoom(newZoom);
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (tool === "pan") {
+      setIsPanning(true);
+      setLastPanPoint({ x: e.clientX, y: e.clientY });
     }
-  };
+  }, [tool]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isPanning && tool === "pan") {
+      const deltaX = e.clientX - lastPanPoint.x;
+      const deltaY = e.clientY - lastPanPoint.y;
+      
+      setPan(prev => ({
+        x: prev.x + deltaX,
+        y: prev.y + deltaY,
+      }));
+      
+      setLastPanPoint({ x: e.clientX, y: e.clientY });
+    }
+  }, [isPanning, lastPanPoint, tool]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsPanning(false);
+  }, []);
 
   const updateCardPosition = (id: string, newPosition: Position) => {
     console.log(`Updating card ${id} position to:`, newPosition);
@@ -212,15 +206,15 @@ export default function Whiteboard() {
 
   const handleStartConnection = (cardId: string, position: Position) => {
     console.log(`Starting connection from card ${cardId} at:`, position);
-    if (currentTool === "connect" || !connectingFrom) {
+    if (tool === "connect" || !connectingFrom) {
       setConnectingFrom(cardId);
-      setCurrentTool("connect");
+      setTool("connect");
       toast("Click on another card to connect them!");
     }
   };
 
   const handleConnect = () => {
-    setCurrentTool("connect");
+    setTool("connect");
     setConnectingFrom(null);
     toast("Connection mode: Click a card to start connecting!");
   };
@@ -263,7 +257,7 @@ export default function Whiteboard() {
       }
       
       setConnectingFrom(null);
-      setCurrentTool("select");
+      setTool("select");
     }
   };
 
@@ -287,131 +281,126 @@ export default function Whiteboard() {
   console.log("Current drawing elements:", drawingElements);
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex-1 relative overflow-hidden bg-whiteboard">
+      {/* Advanced Toolbar */}
       <AdvancedToolbar
-        tool={currentTool}
-        onToolChange={setCurrentTool}
+        tool={tool}
         shapeTool={shapeTool}
-        onShapeToolChange={setShapeTool}
         zoom={zoom}
+        brushSize={brushSize}
+        brushColor={brushColor}
+        onToolChange={setTool}
+        onShapeToolChange={setShapeTool}
         onZoomIn={handleZoomIn}
         onZoomOut={handleZoomOut}
-        brushSize={brushSize}
         onBrushSizeChange={setBrushSize}
-        brushColor={brushColor}
         onBrushColorChange={setBrushColor}
-        onConnect={handleConnect}
-        isConnecting={connectingFrom !== null}
         onAddCard={addNewCard}
+        onConnect={handleConnect}
       />
-      
-      <div 
+
+      {/* Whiteboard Canvas */}
+      <div
         ref={whiteboardRef}
-        className="flex-1 relative overflow-hidden bg-background"
+        className={`w-full h-full relative ${tool === "pan" ? "cursor-grab" : tool === "connect" ? "cursor-crosshair" : "cursor-default"} ${isPanning ? "cursor-grabbing" : ""}`}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
-        <InfiniteCanvas
+        {/* Grid Background */}
+        <div 
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: `
+              radial-gradient(circle, hsl(var(--muted-foreground)) 1px, transparent 1px)
+            `,
+            backgroundSize: "20px 20px",
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "0 0",
+          }}
+        />
+
+        {/* Enhanced Connection Canvas */}
+        <EnhancedConnectionCanvas
+          connections={connections}
+          onConnectionUpdate={setConnections}
+          containerRef={whiteboardRef}
           zoom={zoom}
           pan={pan}
-          onZoomChange={handleZoomChange}
-          onPanChange={handlePanChange}
-          tool={currentTool}
-          className="w-full h-full"
+        />
+
+        {/* Fabric.js Drawing Canvas */}
+        <FabricCanvasComponent
+          tool={tool}
+          shapeTool={shapeTool}
+          brushSize={brushSize}
+          brushColor={brushColor}
+          zoom={zoom}
+          pan={pan}
+          onElementAdd={handleElementAdd}
+          onElementUpdate={handleElementUpdate}
+          onElementDelete={handleElementDelete}
+        />
+
+        {/* Cards */}
+        <div
+          className="relative z-20"
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "0 0",
+          }}
         >
-          {/* Dynamic Grid */}
-          <DynamicGrid
-            zoom={zoom}
-            pan={pan}
-            containerSize={containerSize}
-            visible={showGrid}
-          />
+          {cards.map((card) => (
+            <KnowledgeCard
+              key={card.id}
+              id={card.id}
+              title={card.title}
+              content={card.content}
+              tags={card.tags}
+              color={card.color}
+              position={card.position}
+              size={card.size}
+              onPositionChange={updateCardPosition}
+              onSizeChange={updateCardSize}
+              onDelete={deleteCard}
+              onUpdate={updateCard}
+              onStartConnection={handleStartConnection}
+              onEndConnection={handleEndConnection}
+              disabled={tool === "pan"}
+              scale={1}
+            />
+          ))}
+        </div>
 
-          {/* Connections */}
-          <EnhancedConnectionCanvas
-            connections={connections}
-            onConnectionUpdate={setConnections}
-            containerRef={whiteboardRef}
-            zoom={zoom}
-            pan={pan}
-          />
+        {/* Drawing Elements */}
+        <div
+          className="relative z-15"
+          style={{
+            transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+            transformOrigin: "0 0",
+          }}
+        >
+          {drawingElements.map((element) => (
+            <MediaElement
+              key={element.id}
+              element={element}
+              onUpdate={handleElementUpdate}
+              onDelete={handleElementDelete}
+              scale={1}
+            />
+          ))}
+        </div>
 
-          {/* Fabric.js Canvas for Drawing */}
-          <FabricCanvasComponent
-            tool={currentTool}
-            shapeTool={shapeTool}
-            brushSize={brushSize}
-            brushColor={brushColor}
-            zoom={zoom}
-            pan={pan}
-            onElementAdd={handleElementAdd}
-            onElementUpdate={handleElementUpdate}
-            onElementDelete={handleElementDelete}
-          />
-
-          {/* Cards */}
-          <div className="relative z-20">
-            {cards.map((card) => (
-              <KnowledgeCard
-                key={card.id}
-                data={card}
-                onPositionChange={(position) => updateCardPosition(card.id, position)}
-                onSizeChange={(size) => updateCardSize(card.id, size)}
-                onUpdate={(updates) => updateCard(card.id, updates)}
-                onDelete={() => deleteCard(card.id)}
-                onConnectionStart={() => handleStartConnection(card.id, card.position)}
-                onConnectionEnd={() => handleEndConnection(card.id, card.position)}
-                isConnecting={connectingFrom !== null}
-                zoom={zoom}
-                disabled={currentTool !== 'select'}
-              />
-            ))}
+        {/* Media Uploader (positioned for click-to-add) */}
+        {(tool === "image" || tool === "video" || tool === "pdf" || tool === "link") && (
+          <div className="absolute top-20 left-4 z-10">
+            <MediaUploader
+              onMediaAdd={handleElementAdd}
+              position={{ x: 100, y: 100 }}
+            />
           </div>
-
-          {/* Drawing Elements */}
-          <div className="relative z-15">
-            {drawingElements.map((element) => (
-              <MediaElement
-                key={element.id}
-                element={element}
-                onUpdate={(updates) => handleElementUpdate(element.id, updates)}
-                onDelete={() => handleElementDelete(element.id)}
-                zoom={zoom}
-              />
-            ))}
-          </div>
-        </InfiniteCanvas>
-
-        {/* Media Uploader */}
-        {(currentTool === 'image' || currentTool === 'video' || currentTool === 'pdf') && (
-          <MediaUploader
-            tool={currentTool}
-            onUpload={(element) => {
-              setDrawingElements(prev => [...prev, element]);
-              setCurrentTool('select');
-            }}
-            onCancel={() => setCurrentTool('select')}
-          />
         )}
-
-        {/* Mini Map */}
-        <MiniMap
-          cards={cards}
-          zoom={zoom}
-          pan={pan}
-          onNavigate={handleNavigate}
-          containerSize={containerSize}
-        />
-
-        {/* Navigation Panel */}
-        <NavigationPanel
-          zoom={zoom}
-          pan={pan}
-          onZoomChange={handleZoomChange}
-          onPanChange={handlePanChange}
-          cards={cards}
-          containerSize={containerSize}
-          showGrid={showGrid}
-          onToggleGrid={handleToggleGrid}
-        />
       </div>
     </div>
   );

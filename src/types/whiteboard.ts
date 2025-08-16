@@ -104,26 +104,6 @@ export interface DrawingState {
   brushType: 'pen' | 'highlighter' | 'marker';
 }
 
-// Viewport state for infinite canvas
-export interface ViewportState {
-  zoom: number;
-  pan: Position;
-  bounds: {
-    min: Position;
-    max: Position;
-  };
-  center: Position;
-}
-
-// Navigation state
-export interface NavigationState {
-  isNavigating: boolean;
-  showMinimap: boolean;
-  showGrid: boolean;
-  snapToGrid: boolean;
-  gridSize: number;
-}
-
 // Layer system
 export interface Layer {
   id: string;
