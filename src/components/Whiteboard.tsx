@@ -46,7 +46,7 @@ export default function Whiteboard() {
   const [connections, setConnections] = useState<Connection[]>([]);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState<Position>({ x: 0, y: 0 });
+  const [pan, setPan] = useState<Position>({ x: 100, y: 100 });
   const [currentTool, setCurrentTool] = useState<WhiteboardTool>("select");
   const [shapeTool, setShapeTool] = useState<ShapeTool>("rectangle");
   const [drawingElements, setDrawingElements] = useState<DrawingElement[]>([]);
