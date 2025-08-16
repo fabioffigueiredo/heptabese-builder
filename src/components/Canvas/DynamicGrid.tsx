@@ -19,10 +19,10 @@ export default function DynamicGrid({
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (!visible || !pan || typeof pan.x !== 'number' || typeof pan.y !== 'number') return;
+    if (!visible) return;
     
     const canvas = canvasRef.current;
-    if (!canvas || containerSize.width === 0 || containerSize.height === 0) return;
+    if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -42,11 +42,9 @@ export default function DynamicGrid({
     while (spacing < 10) spacing *= 2;
     while (spacing > 100) spacing /= 2;
 
-    // Calculate grid offset with safe pan values
-    const safeX = pan?.x || 0;
-    const safeY = pan?.y || 0;
-    const offsetX = (safeX % spacing + spacing) % spacing;
-    const offsetY = (safeY % spacing + spacing) % spacing;
+    // Calculate grid offset
+    const offsetX = (pan.x % spacing + spacing) % spacing;
+    const offsetY = (pan.y % spacing + spacing) % spacing;
 
     // Set grid style
     ctx.strokeStyle = `hsl(var(--border))`;
@@ -75,8 +73,8 @@ export default function DynamicGrid({
     ctx.globalAlpha = Math.min(0.3, zoom * 0.2);
 
     const majorSpacing = spacing * 5;
-    const majorOffsetX = (safeX % majorSpacing + majorSpacing) % majorSpacing;
-    const majorOffsetY = (safeY % majorSpacing + majorSpacing) % majorSpacing;
+    const majorOffsetX = (pan.x % majorSpacing + majorSpacing) % majorSpacing;
+    const majorOffsetY = (pan.y % majorSpacing + majorSpacing) % majorSpacing;
 
     // Draw major vertical lines
     for (let x = majorOffsetX; x < containerSize.width; x += majorSpacing) {
@@ -96,8 +94,8 @@ export default function DynamicGrid({
 
     // Draw origin indicator
     if (zoom > 0.1) {
-      const originX = safeX;
-      const originY = safeY;
+      const originX = pan.x;
+      const originY = pan.y;
       
       if (originX >= 0 && originX <= containerSize.width && 
           originY >= 0 && originY <= containerSize.height) {
@@ -125,7 +123,7 @@ export default function DynamicGrid({
     ctx.globalAlpha = 1;
   }, [zoom, pan, containerSize, visible]);
 
-  if (!visible || containerSize.width === 0 || containerSize.height === 0) return null;
+  if (!visible) return null;
 
   return (
     <canvas
